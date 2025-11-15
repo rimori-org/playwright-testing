@@ -1,0 +1,38 @@
+{
+  "name": "@rimori/playwright",
+  "version": "0.1.0",
+  "description": "Playwright testing utilities for Rimori plugins and workers",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "source": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:headed:debug": "playwright test --headed --debug"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "dependencies": {
+    "@rimori/client": "^2.1.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.12.7",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.7.2"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
