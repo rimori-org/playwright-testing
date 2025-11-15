@@ -60,7 +60,7 @@ test.describe('Translator Plugin', () => {
   //   await env.teardown();
   // });
 
-  test.only('translates with open page', async ({ page }) => {
+  test('translates with open page', async ({ page }) => {
     //fill and submit the word to be translated
     await page.getByRole('textbox', { name: 'snö, fog, Baum,....' }).fill('tree');
     await page.getByRole('button', { name: 'Look up word' }).click();
@@ -154,7 +154,7 @@ test.describe('Translator Plugin', () => {
     await page.getByRole('textbox', { name: 'Ask questions...' }).fill('What does that mean, explain in detail!');
     await page.getByRole('textbox', { name: 'Ask questions...' }).press('Enter');
     await expect(page.getByText('What does that mean, explain')).toBeVisible();
-   
+
     // validate that ai response is visible
     await expect(page.getByText('This is a tree in Swedish: träd. It is an ett word.')).toBeVisible();
     // reset the translator and check that the ai chat is cleared

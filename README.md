@@ -33,10 +33,10 @@ test.describe('My Plugin', () => {
 
   test.beforeEach(async ({ page }) => {
     env = new RimoriTestEnvironment({ page, pluginId });
-    
+
     // Set up mocks
     env.ai.mockGetObject({ result: 'data' });
-    
+
     // Initialize the test environment
     await env.setup();
     await page.goto(`${pluginUrl}/#/my-page`);
@@ -83,6 +83,7 @@ new RimoriTestEnvironment({
 ```
 
 **Example:**
+
 ```typescript
 const env = new RimoriTestEnvironment({
   page,
@@ -140,7 +141,7 @@ env.ai.mockGetObject(
       const body = request.postDataJSON();
       return body?.instructions?.includes('Look up the word') ?? false;
     },
-  }
+  },
 );
 ```
 
@@ -223,22 +224,23 @@ All mock methods accept an optional `MockOptions` parameter:
 interface MockOptions {
   // Delay before response (milliseconds)
   delay?: number;
-  
+
   // Request matcher function
   matcher?: (request: Request) => boolean;
-  
+
   // HTTP method override
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  
+
   // Custom response headers
   headers?: Record<string, string>;
-  
+
   // Simulate network error
   error?: 'aborted' | 'connectionfailed' | 'timedout' | /* ... */;
 }
 ```
 
 **Example with matcher:**
+
 ```typescript
 env.ai.mockGetObject(
   { result: 'data' },
@@ -248,7 +250,7 @@ env.ai.mockGetObject(
       return body?.instructions?.includes('specific text') ?? false;
     },
     delay: 500, // Simulate network delay
-  }
+  },
 );
 ```
 
@@ -281,6 +283,7 @@ env.plugin.mockSetSettings([{ id: 'updated-id' }]);
 Action events work differently for main panel vs sidebar:
 
 **Side Panel Action:**
+
 ```typescript
 // Plugin is on a sidebar page, uses onSidePanelAction()
 await env.event.triggerOnSidePanelAction({
@@ -292,6 +295,7 @@ await env.event.triggerOnSidePanelAction({
 ```
 
 **Main Panel Action:**
+
 ```typescript
 // Plugin is on a main panel page, uses onMainPanelAction()
 await env.event.triggerOnMainPanelAction({
@@ -313,7 +317,7 @@ env.ai.mockGetObject(
     matcher: (req) => {
       return req.postDataJSON()?.instructions?.includes('Look up') ?? false;
     },
-  }
+  },
 );
 
 // Second request - example sentence
@@ -324,7 +328,7 @@ env.ai.mockGetObject(
       return req.postDataJSON()?.instructions?.includes('example sentence') ?? false;
     },
     delay: 1000, // Simulate slower response
-  }
+  },
 );
 ```
 
@@ -359,7 +363,7 @@ test.describe('Translator Plugin', () => {
         matcher: (req) => {
           return req.postDataJSON()?.instructions?.includes('Look up') ?? false;
         },
-      }
+      },
     );
 
     // Mock example sentence (with delay)
@@ -376,7 +380,7 @@ test.describe('Translator Plugin', () => {
         matcher: (req) => {
           return req.postDataJSON()?.instructions?.includes('example') ?? false;
         },
-      }
+      },
     );
 
     await env.setup();
@@ -436,7 +440,7 @@ test('handles streaming chat responses', async ({ page }) => {
 The test environment automatically provides:
 
 - **Default RimoriInfo**: Test credentials, guild info, user profile
-- **Default route handlers**: 
+- **Default route handlers**:
   - `GET /plugin_settings` → returns `null` (no settings)
   - `PATCH /plugin_settings` → returns `[]` (no rows updated, triggers INSERT)
   - `POST /plugin_settings` → returns success response
@@ -492,4 +496,3 @@ env.plugin.mockGetSettings({ id: 'existing', settings: {...} });
 ## License
 
 Apache License 2.0
-
