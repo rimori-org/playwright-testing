@@ -1,10 +1,10 @@
-# @rimori/playwright
+# @rimori/playwright-testing
 
 Playwright testing utilities for Rimori plugins. This package provides a complete testing environment that simulates how plugins run within the Rimori application, including MessageChannel communication, API mocking, and event handling.
 
 ## Overview
 
-The `@rimori/playwright` package enables end-to-end testing of Rimori plugins by:
+The `@rimori/playwright-testing` package enables end-to-end testing of Rimori plugins by:
 
 - **Simulating iframe environment**: Makes plugins think they're running in an iframe (not standalone mode)
 - **MessageChannel simulation**: Mimics the parent-iframe communication used in production
@@ -14,16 +14,167 @@ The `@rimori/playwright` package enables end-to-end testing of Rimori plugins by
 ## Installation
 
 ```bash
-npm install --save-dev @rimori/playwright @playwright/test
+npm install --save-dev @rimori/playwright-testing @playwright/test
 # or
-pnpm add -D @rimori/playwright @playwright/test
+pnpm add -D @rimori/playwright-testing @playwright/test
+# or
+yarn add -D @rimori/playwright-testing @playwright/test
+```
+
+## Setup Steps
+
+To initialize Playwright testing in your Rimori plugin, follow these steps:
+
+### 1. Install Dependencies
+
+Add the required dependencies to your `package.json`:
+
+```json
+{
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@rimori/playwright-testing": "^0.2.1"
+  }
+}
+```
+
+Then run:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+### 2. Create Playwright Configuration
+
+Create a `playwright.config.ts` file in your plugin root:
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './test',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    trace: 'on-first-retry',
+    headless: false,
+    screenshot: 'only-on-failure',
+  },
+  timeout: 30000,
+  expect: {
+    timeout: 5000,
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+});
+```
+
+### 3. Add Test Scripts
+
+Add test scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:headed:debug": "playwright test --headed --debug"
+  }
+}
+```
+
+### 4. Create Test Directory and Files
+
+Create a `test` directory in your plugin root and add your test files:
+
+```typescript
+// test/my-plugin.test.ts
+import { test, expect } from '@playwright/test';
+import { RimoriTestEnvironment } from '@rimori/playwright-testing';
+
+const pluginId = 'pl1234567890'; // Your plugin ID from rimori.config.ts
+const pluginUrl = 'http://localhost:3002'; // Your dev server URL
+
+test.describe('My Plugin', () => {
+  let env: RimoriTestEnvironment;
+
+  test.beforeEach(async ({ page }) => {
+    env = new RimoriTestEnvironment({ page, pluginId });
+
+    // Set up your mocks here
+    // env.ai.mockGetObject(...);
+    // env.plugin.mockGetSettings(...);
+
+    await env.setup();
+    await page.goto(`${pluginUrl}/#/your-page`);
+  });
+
+  test('should work correctly', async ({ page }) => {
+    await expect(page.getByText('Hello')).toBeVisible();
+  });
+});
+```
+
+### 5. Get Your Plugin ID
+
+Find your plugin ID in `rimori/rimori.config.ts`:
+
+```typescript
+const config: RimoriPluginConfig = {
+  id: 'pl1234567890', // <-- This is your plugin ID
+  // ...
+};
+```
+
+### 6. Run Tests
+
+1. **Start your dev server** in one terminal:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+2. **Run tests** in another terminal:
+   ```bash
+   npm test
+   # or
+   yarn test
+   ```
+
+### Complete Example Setup
+
+Here's a complete example of what your plugin structure should look like:
+
+```
+your-plugin/
+├── package.json          # With @playwright/test and test scripts
+├── playwright.config.ts  # Playwright configuration
+├── rimori/
+│   └── rimori.config.ts  # Contains your plugin ID
+└── test/
+    └── my-plugin.test.ts # Your test files
 ```
 
 ## Quick Start
 
 ```typescript
 import { test, expect } from '@playwright/test';
-import { RimoriTestEnvironment } from '@rimori/playwright';
+import { RimoriTestEnvironment } from '@rimori/playwright-testing';
 
 const pluginId = 'pl7720512027';
 const pluginUrl = 'http://localhost:3009';
@@ -338,7 +489,7 @@ env.ai.mockGetObject(
 
 ```typescript
 import { test, expect } from '@playwright/test';
-import { RimoriTestEnvironment } from '@rimori/playwright';
+import { RimoriTestEnvironment } from '@rimori/playwright-testing';
 
 const pluginId = 'pl7720512027';
 const pluginUrl = 'http://localhost:3009';

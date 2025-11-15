@@ -1,6 +1,6 @@
 {
-  "name": "@rimori/playwright",
-  "version": "0.1.0",
+  "name": "@rimori/playwright-testing",
+  "version": "0.2.2",
   "description": "Playwright testing utilities for Rimori plugins and workers",
   "license": "Apache-2.0",
   "main": "dist/index.js",

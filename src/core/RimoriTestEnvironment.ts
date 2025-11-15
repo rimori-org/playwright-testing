@@ -1,4 +1,4 @@
-import { Page, Route, Request } from '@playwright/test';
+import { Page, Route, Request, ConsoleMessage } from '@playwright/test';
 import { RimoriInfo } from '@rimori/client/dist/plugin/CommunicationHandler';
 import { UserInfo } from '@rimori/client/dist/controller/SettingsController';
 import { MainPanelAction, Plugin } from '@rimori/client/dist/fromRimori/PluginTypes';
@@ -64,6 +64,12 @@ interface MockOptions {
    * The HTTP method for the route. If not provided, defaults will be used based on the route type.
    */
   method?: HttpMethod;
+  /**
+   * If true, the mock is removed after first use. Default: false (persistent).
+   * This allows for sequential mock responses where each mock is consumed once.
+   * Useful for testing flows where the same route is called multiple times with different responses.
+   */
+  once?: boolean;
 }
 
 interface MockRecord {
@@ -128,6 +134,10 @@ export class RimoriTestEnvironment {
 
   public async setup(): Promise<void> {
     console.log('Setting up RimoriTestEnvironment');
+
+    this.page.on('console', (msg: ConsoleMessage) => {
+      console.log(`[browser:${msg.type()}]`, msg.text());
+    });
 
     // Add default handlers for common routes that plugins typically access
     // These can be overridden by explicit mock calls
@@ -248,6 +258,17 @@ export class RimoriTestEnvironment {
     return `${method} ${normalizedUrl}`;
   }
 
+  /**
+   * Removes a one-time mock from the mocks array after it's been used.
+   */
+  private removeOneTimeMock(mock: MockRecord, mocks: MockRecord[]): void {
+    if (!mock.options?.once) return;
+    const index = mocks.indexOf(mock);
+    if (index > -1) {
+      mocks.splice(index, 1);
+    }
+  }
+
   private async handleRoute(route: Route, routes: Record<string, MockRecord[]>): Promise<void> {
     console.warn('handleRoute is not tested');
     const request = route.request();
@@ -297,6 +318,9 @@ export class RimoriTestEnvironment {
     const options = matchingMock.options;
     await new Promise((resolve) => setTimeout(resolve, options?.delay ?? 0));
 
+    // Remove one-time mock after handling (before responding)
+    this.removeOneTimeMock(matchingMock, mocks);
+
     if (options?.error) {
       return await route.abort(options.error);
     }
@@ -314,9 +338,11 @@ export class RimoriTestEnvironment {
     }
 
     // Regular JSON response
+    const responseBody = JSON.stringify(matchingMock.value);
+
     route.fulfill({
       status: 200,
-      body: JSON.stringify(matchingMock.value),
+      body: responseBody,
     });
   }
 
@@ -412,6 +438,7 @@ export class RimoriTestEnvironment {
     mockInsertSettings: (response?: unknown, options?: MockOptions) => {
       console.log('Mocking insert settings for mockInsertSettings', response, options);
       console.warn('mockInsertSettings is not tested');
+      // TODO this function should not exist and possibly be combined with the mockSetSettings function
 
       // POST request returns the inserted row or success response
       // Default to an object representing successful insert
@@ -435,7 +462,27 @@ export class RimoriTestEnvironment {
   };
 
   public readonly db = {
-    mockFrom: () => {},
+    /**
+     * Mocks a Supabase table endpoint (from(tableName)).
+     * The table name will be prefixed with the plugin ID in the actual URL.
+     *
+     * Supabase operations map to HTTP methods as follows:
+     * - .select() → GET
+     * - .insert() → POST
+     * - .update() → PATCH
+     * - .delete() → DELETE (can return data with .delete().select())
+     * - .upsert() → POST
+     *
+     * @param tableName - The table name (e.g., 'decks')
+     * @param value - The response value to return for the request
+     * @param options - Mock options including HTTP method (defaults to 'GET' if not specified)
+     */
+    mockFrom: (tableName: string, value: unknown, options?: MockOptions) => {
+      console.log('Mocking db.from for table:', tableName, 'method:', options?.method ?? 'GET', value, options);
+
+      const fullTableName = `${this.pluginId}_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, options);
+    },
     mockTable: () => {},
   };
 
@@ -459,17 +506,12 @@ export class RimoriTestEnvironment {
       }
 
       const topic = `${this.pluginId}.action.requestSidebar`;
-      console.log('[RimoriTestEnvironment] Setting up listener for topic:', topic, 'with payload:', payload);
 
       const actionPayload = payload;
       const off = this.messageChannelSimulator.on(topic, async (event) => {
-        console.log('[RimoriTestEnvironment] Received action.requestSidebar event:', event);
-        console.log('[RimoriTestEnvironment] Responding to action.requestSidebar with payload:', actionPayload);
         await this.messageChannelSimulator!.emit(topic, actionPayload, 'sidebar');
         off();
       });
-
-      console.log('[RimoriTestEnvironment] Listener set up for topic:', topic);
     },
     /**
      * Triggers a main panel action event as the parent application would.
@@ -487,7 +529,6 @@ export class RimoriTestEnvironment {
       // Listen for when the plugin emits 'action.requestMain' (which becomes '{pluginId}.action.requestMain')
       // and respond with the MainPanelAction payload, matching rimori-main's EventBus.respond behavior
       const topic = `${this.pluginId}.action.requestMain`;
-      console.log('[RimoriTestEnvironment] Setting up listener for topic:', topic, 'with payload:', payload);
 
       // Store the payload in a closure so we can respond with it
       const actionPayload = payload;
@@ -495,15 +536,11 @@ export class RimoriTestEnvironment {
       // Set up a one-time listener that responds when the plugin emits 'action.requestMain'
       // The handler receives the event object from the plugin
       const off = this.messageChannelSimulator.on(topic, async (event) => {
-        console.log('[RimoriTestEnvironment] Received action.requestMain event:', event);
-        console.log('[RimoriTestEnvironment] Responding to action.requestMain with payload:', actionPayload);
         // When plugin emits 'action.requestMain', respond with the MainPanelAction data
         // The sender is 'mainPanel' to match rimori-main's MainPluginHandler behavior
         await this.messageChannelSimulator!.emit(topic, actionPayload, 'mainPanel');
         off(); // Remove listener after responding once (one-time response like EventBus.respond)
       });
-
-      console.log('[RimoriTestEnvironment] Listener set up for topic:', topic);
     },
   };
 
@@ -525,7 +562,6 @@ export class RimoriTestEnvironment {
      */
     mockGetSteamedText: (text: string, options?: MockOptions) => {
       console.log('Mocking get steamed text for mockGetSteamedText', text, options);
-      console.warn('mockGetSteamedText is not tested');
 
       this.addBackendRoute('/ai/llm', text, { ...options, isStreaming: true });
     },
@@ -541,7 +577,6 @@ export class RimoriTestEnvironment {
     },
     mockGetObject: (value: unknown, options?: MockOptions) => {
       console.log('Mocking get object for mockGetObject', value, options);
-      console.warn('mockGetObject is not tested');
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
     },
   };
