@@ -270,7 +270,6 @@ export class RimoriTestEnvironment {
   }
 
   private async handleRoute(route: Route, routes: Record<string, MockRecord[]>): Promise<void> {
-    console.warn('handleRoute is not tested');
     const request = route.request();
     const requestUrl = request.url();
     const method = request.method().toUpperCase() as HttpMethod;
@@ -353,7 +352,6 @@ export class RimoriTestEnvironment {
    * @param options - The options for the route. Method defaults to 'GET' if not specified.
    */
   private addSupabaseRoute(path: string, values: unknown, options?: MockOptions): void {
-    console.warn('addSupabaseRoute is not tested');
     const method = options?.method ?? 'GET';
     const fullPath = `${this.rimoriInfo.url}/rest/v1/${path}`;
     const routeKey = this.createRouteKey(method, fullPath);
@@ -483,18 +481,85 @@ export class RimoriTestEnvironment {
       const fullTableName = `${this.pluginId}_${tableName}`;
       this.addSupabaseRoute(fullTableName, value, options);
     },
-    mockTable: () => {},
   };
 
   public readonly event = {
-    mockEmit: () => {},
-    mockRequest: () => {},
-    mockOn: () => {},
+    /**
+     * Emit an event into the plugin as if it came from Rimori main or another plugin.
+     *
+     * Note: This does NOT currently reach worker listeners such as those in
+     * `worker/listeners/decks.ts` or `worker/listeners/flascards.ts` – those run in a
+     * separate process. This helper is intended for UI‑side events only.
+     */
+    mockEmit: async (topic: string, data: unknown, sender = 'test'): Promise<void> => {
+      if (!this.messageChannelSimulator) {
+        throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
+      }
+      await this.messageChannelSimulator.emit(topic, data, sender);
+    },
+    /**
+     * Registers a one-time auto-responder for request/response style events.
+     *
+     * When the plugin calls `plugin.event.request(topic, data)`, this registered responder
+     * will automatically return the provided response value. The responder is automatically
+     * removed after the first request, ensuring it only responds once.
+     *
+     * Example:
+     * ```ts
+     * // Register a responder that will return deck summaries when requested
+     * env.event.mockRequest('deck.requestOpenToday', [
+     *   { id: 'deck-1', name: 'My Deck', total_new: 5, total_learning: 2, total_review: 10 }
+     * ]);
+     *
+     * // Now when the plugin calls: plugin.event.request('deck.requestOpenToday', {})
+     * // It will receive the deck summaries array above
+     * ```
+     *
+     * @param topic - The event topic to respond to (e.g., 'deck.requestOpenToday')
+     * @param response - The response value to return, or a function that receives the event and returns the response
+     * @returns A function to manually remove the responder before it's used
+     */
+    mockRequest: (topic: string, response: unknown | ((event: unknown) => unknown)) => {
+      if (!this.messageChannelSimulator) {
+        throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
+      }
+      return this.messageChannelSimulator.respondOnce(topic, response);
+    },
+    /**
+     * Listen for events emitted by the plugin.
+     * @param topic - The event topic to listen for (e.g., 'global.accomplishment.triggerMicro')
+     * @param handler - The handler function that receives the event data
+     * @returns A function to unsubscribe from the event
+     */
+    on: (topic: string, handler: (data: unknown) => void): (() => void) => {
+      if (!this.messageChannelSimulator) {
+        throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
+      }
+      return this.messageChannelSimulator.on(topic, (event) => {
+        handler(event.data);
+      });
+    },
     mockOnce: () => {},
     mockRespond: () => {},
     mockEmitAccomplishment: () => {},
     mockOnAccomplishment: () => {},
-    mockEmitSidebarAction: () => {},
+    /**
+     * Emits a sidebar action event into the plugin as if Rimori main had triggered it.
+     * This is useful for testing sidebar-driven flows like flashcard creation from selected text.
+     *
+     * It sends a message on the 'global.sidebar.triggerAction' topic, which plugins can listen to via:
+     *   plugin.event.on<{ action: string; text: string }>('global.sidebar.triggerAction', ...)
+     *
+     * @param payload - The payload forwarded to the plugin, typically including an `action` key and optional `text`.
+     */
+    triggerSidebarAction: async (payload: { action: string; text?: string }) => {
+      if (!this.messageChannelSimulator) {
+        throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
+      }
+
+      // Simulate Rimori main emitting the sidebar trigger event towards the plugin
+      await this.messageChannelSimulator.emit('global.sidebar.triggerAction', payload, 'sidebar');
+    },
     /**
      * Triggers a side panel action event as the parent application would.
      * This simulates how rimori-main's SidebarPluginHandler responds to plugin's 'action.requestSidebar' events.
@@ -578,6 +643,130 @@ export class RimoriTestEnvironment {
     mockGetObject: (value: unknown, options?: MockOptions) => {
       console.log('Mocking get object for mockGetObject', value, options);
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
+    },
+  };
+
+  /**
+   * Helpers for tracking browser audio playback in tests.
+   *
+   * This is useful for components like the AudioPlayer in @rimori/react-client which:
+   *  1) Fetch audio data from the backend (mocked via `env.ai.mockGetVoice`)
+   *  2) Create `new Audio(url)` and call `.play()`
+   *
+   * With tracking enabled you can assert how many times audio playback was attempted:
+   *
+   * ```ts
+   * await env.audio.enableTracking();
+   * await env.ai.mockGetVoice(Buffer.from('dummy'), { method: 'POST' });
+   * await env.setup();
+   * // ...navigate and trigger audio...
+   * const counts = await env.audio.getPlayCounts();
+   * expect(counts.mediaPlayCalls).toBeGreaterThan(0);
+   * ```
+   *
+   * **Counter Types:**
+   * - `mediaPlayCalls`: Tracks calls to `.play()` on any `HTMLMediaElement` instance
+   *   (including `<audio>`, `<video>` elements, or any element that inherits from `HTMLMediaElement`).
+   *   This counter increments whenever `HTMLMediaElement.prototype.play()` is invoked.
+   * - `audioPlayCalls`: Tracks calls to `.play()` specifically on instances created via the `Audio` constructor
+   *   (e.g., `new Audio(url).play()`). This is a subset of `mediaPlayCalls` but provides more specific
+   *   tracking for programmatically created audio elements.
+   *
+   * **Note**: Since `Audio` instances are also `HTMLMediaElement` instances, calling `.play()` on an
+   * `Audio` object will increment **both** counters. For most use cases, checking `mediaPlayCalls`
+   * is sufficient as it captures all audio playback attempts.
+   */
+  public readonly audio = {
+    /**
+     * Injects tracking hooks for HTMLMediaElement.play and the Audio constructor.
+     * Must be called before the plugin code runs (ideally before env.setup()).
+     */
+    enableTracking: async (): Promise<void> => {
+      await this.page.addInitScript(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        if (!w.__rimoriAudio) {
+          w.__rimoriAudio = {
+            mediaPlayCalls: 0,
+            audioPlayCalls: 0,
+          };
+        }
+
+        const proto = (w.HTMLMediaElement && w.HTMLMediaElement.prototype) || undefined;
+        if (proto && !proto.__rimoriPatched) {
+          const originalPlay = proto.play;
+          proto.play = function (...args: unknown[]) {
+            w.__rimoriAudio.mediaPlayCalls += 1;
+            return originalPlay.apply(this, args as any);
+          };
+          Object.defineProperty(proto, '__rimoriPatched', {
+            value: true,
+            configurable: false,
+            enumerable: false,
+            writable: false,
+          });
+        }
+
+        const OriginalAudio = w.Audio;
+        if (OriginalAudio && !OriginalAudio.__rimoriPatched) {
+          const PatchedAudio = function (...args: any[]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const audio: any = new (OriginalAudio as any)(...args);
+            const originalPlay = audio.play.bind(audio);
+            audio.play = () => {
+              w.__rimoriAudio.audioPlayCalls += 1;
+              return originalPlay();
+            };
+            return audio;
+          };
+          PatchedAudio.prototype = OriginalAudio.prototype;
+          Object.defineProperty(PatchedAudio, '__rimoriPatched', {
+            value: true,
+            configurable: false,
+            enumerable: false,
+            writable: false,
+          });
+          w.Audio = PatchedAudio;
+        }
+      });
+    },
+
+    /**
+     * Returns current audio play counters from the browser context.
+     *
+     * @returns An object with two counters:
+     *   - `mediaPlayCalls`: Total number of `.play()` calls on any `HTMLMediaElement` (includes all audio/video elements)
+     *   - `audioPlayCalls`: Number of `.play()` calls on instances created via `new Audio()` (subset of `mediaPlayCalls`)
+     *
+     * **Note**: Since `Audio` extends `HTMLMediaElement`, calling `.play()` on an `Audio` instance increments both counters.
+     * For general audio playback tracking, use `mediaPlayCalls` as it captures all playback attempts.
+     */
+    getPlayCounts: async (): Promise<{ mediaPlayCalls: number; audioPlayCalls: number }> => {
+      return this.page.evaluate(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        if (!w.__rimoriAudio) {
+          return { mediaPlayCalls: 0, audioPlayCalls: 0 };
+        }
+        return {
+          mediaPlayCalls: Number(w.__rimoriAudio.mediaPlayCalls || 0),
+          audioPlayCalls: Number(w.__rimoriAudio.audioPlayCalls || 0),
+        };
+      });
+    },
+
+    /**
+     * Resets the audio play counters to zero.
+     */
+    resetPlayCounts: async (): Promise<void> => {
+      await this.page.evaluate(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        if (w.__rimoriAudio) {
+          w.__rimoriAudio.mediaPlayCalls = 0;
+          w.__rimoriAudio.audioPlayCalls = 0;
+        }
+      });
     },
   };
 

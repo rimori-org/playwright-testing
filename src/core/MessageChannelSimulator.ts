@@ -314,6 +314,43 @@ export class MessageChannelSimulator {
   }
 
   /**
+   * Registers a one-time auto-responder for a request/response topic.
+   * When a request with an eventId comes in for this topic, the responder will
+   * be called once and then automatically removed.
+   *
+   * @param topic - The event topic to respond to
+   * @param responder - A function that returns the response data, or a value to return directly
+   * @returns A function to manually remove the responder before it's used
+   */
+  public respondOnce(topic: string, responder: AutoResponder | unknown): () => void {
+    let used = false;
+    const wrappedResponder: AutoResponder = (event) => {
+      if (used) {
+        return undefined;
+      }
+      used = true;
+      // Remove from autoResponders after first use
+      this.autoResponders.delete(topic);
+
+      // If responder is a function, call it with the event, otherwise return the value directly
+      if (typeof responder === 'function') {
+        return (responder as AutoResponder)(event);
+      }
+      return responder;
+    };
+
+    this.autoResponders.set(topic, wrappedResponder);
+
+    // Return a function to manually remove the responder
+    return () => {
+      if (!used) {
+        this.autoResponders.delete(topic);
+        used = true;
+      }
+    };
+  }
+
+  /**
    * Overrides the default profile returned by the auto responders.
    */
   public setUserInfo(overrides: Partial<UserInfo>): void {
