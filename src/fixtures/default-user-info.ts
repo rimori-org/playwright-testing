@@ -39,6 +39,7 @@ export const DEFAULT_USER_INFO: UserInfo = {
   user_name: 'Test User',
   target_country: 'SE',
   target_city: 'Stockholm',
+  user_role: 'user',
 } as const;
 
 export type DefaultUserInfo = typeof DEFAULT_USER_INFO;

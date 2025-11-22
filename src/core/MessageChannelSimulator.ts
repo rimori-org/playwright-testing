@@ -460,12 +460,12 @@ export class MessageChannelSimulator {
     }
 
     if ('event' in payload && payload.event) {
-      console.log(
-        '[MessageChannelSimulator] handlePortMessage - received event:',
-        payload.event.topic,
-        'from:',
-        payload.event.sender,
-      );
+      // console.log(
+      //   '[MessageChannelSimulator] handlePortMessage - received event:',
+      //   payload.event.topic,
+      //   'from:',
+      //   payload.event.sender,
+      // );
       await this.dispatchEvent(payload.event);
       await this.maybeRespond(payload.event);
       return;
@@ -473,14 +473,14 @@ export class MessageChannelSimulator {
   }
 
   private async dispatchEvent(event: EventBusMessage): Promise<void> {
-    console.log(
-      '[MessageChannelSimulator] dispatchEvent - topic:',
-      event.topic,
-      'sender:',
-      event.sender,
-      'listeners:',
-      this.listeners.has(event.topic) ? this.listeners.get(event.topic)?.size : 0,
-    );
+    // console.log(
+    //   '[MessageChannelSimulator] dispatchEvent - topic:',
+    //   event.topic,
+    //   'sender:',
+    //   event.sender,
+    //   'listeners:',
+    //   this.listeners.has(event.topic) ? this.listeners.get(event.topic)?.size : 0,
+    // );
     const handlers = this.listeners.get(event.topic);
     if (!handlers?.size) {
       console.log('[MessageChannelSimulator] No handlers found for topic:', event.topic);
@@ -488,7 +488,7 @@ export class MessageChannelSimulator {
       return;
     }
 
-    console.log('[MessageChannelSimulator] Calling', handlers.size, 'handler(s) for topic:', event.topic);
+    // console.log('[MessageChannelSimulator] Calling', handlers.size, 'handler(s) for topic:', event.topic);
     for (const handler of handlers) {
       await handler(event);
     }

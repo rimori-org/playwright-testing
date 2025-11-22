@@ -8,7 +8,7 @@ test.describe('Translator Plugin', () => {
   let env: RimoriTestEnvironment;
 
   test.beforeEach(async ({ page }) => {
-    env = new RimoriTestEnvironment({ page, pluginId });
+    env = new RimoriTestEnvironment({ page, pluginId, pluginUrl });
 
     env.ai.mockGetObject(
       {

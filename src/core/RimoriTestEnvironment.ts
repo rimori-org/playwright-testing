@@ -4,10 +4,13 @@ import { UserInfo } from '@rimori/client/dist/controller/SettingsController';
 import { MainPanelAction, Plugin } from '@rimori/client/dist/fromRimori/PluginTypes';
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
+import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
 
 interface RimoriTestEnvironmentOptions {
   page: Page;
   pluginId: string;
+  pluginUrl: string;
+  settings?: PluginSettings;
   queryParams?: Record<string, string>;
   userInfo?: Record<string, unknown>;
   installedPlugins?: Plugin[];
@@ -73,7 +76,7 @@ interface MockOptions {
 }
 
 interface MockRecord {
-  value: unknown;
+  value: unknown | ((request: Request) => unknown | Promise<unknown>); // Can be a function that receives the request
   method: HttpMethod;
   options?: MockOptions;
   isStreaming?: boolean; // Flag to indicate if this is a streaming response
@@ -87,10 +90,12 @@ export class RimoriTestEnvironment {
   private backendRoutes: Record<string, MockRecord[]> = {};
   private supabaseRoutes: Record<string, MockRecord[]> = {};
   private messageChannelSimulator: MessageChannelSimulator | null = null;
+  private settingsManager: SettingsStateManager;
 
   public constructor(options: RimoriTestEnvironmentOptions) {
     this.page = options.page;
     this.pluginId = options.pluginId;
+
     // TODO move to a function
     this.rimoriInfo = {
       key: 'rimori-testing-key',
@@ -123,42 +128,69 @@ export class RimoriTestEnvironment {
       profile: DEFAULT_USER_INFO,
       mainPanelPlugin: undefined,
       sidePanelPlugin: undefined,
+      interfaceLanguage: DEFAULT_USER_INFO.mother_tongue.code, // Set interface language from user's mother tongue
     };
-    this.interceptRoutes();
+
+    // Initialize settings state manager
+    this.settingsManager = new SettingsStateManager(
+      options.settings || null,
+      options.pluginId,
+      this.rimoriInfo.guild.id,
+    );
+
+    this.interceptRoutes(options.pluginUrl);
   }
 
-  private interceptRoutes(): void {
+  private interceptRoutes(pluginUrl: string): void {
+    // Intercept all /locales requests and fetch from the dev server
+    this.page.route(`${pluginUrl}/locales/**`, async (route: Route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+
+      const devServerUrl = `http://${url.host}/locales/en.json`;
+      // console.log('Fetching locales from: ' + devServerUrl);
+
+      // throw new Error('Test: ' + devServerUrl);
+
+      try {
+        // Fetch from the dev server
+        const response = await fetch(devServerUrl);
+        const body = await response.text();
+
+        await route.fulfill({
+          status: response.status,
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+      } catch (error) {
+        console.error(`Error fetching translation from ${devServerUrl}:`, error);
+        await route.fulfill({
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Failed to load translations' }),
+        });
+      }
+    });
     this.page.route(`${this.rimoriInfo.backendUrl}/**`, (route: Route) => this.handleRoute(route, this.backendRoutes));
     this.page.route(`${this.rimoriInfo.url}/**`, (route: Route) => this.handleRoute(route, this.supabaseRoutes));
   }
 
   public async setup(): Promise<void> {
-    console.log('Setting up RimoriTestEnvironment');
+    // console.log('Setting up RimoriTestEnvironment');
 
     this.page.on('console', (msg: ConsoleMessage) => {
-      console.log(`[browser:${msg.type()}]`, msg.text());
+      const logLevel = msg.type();
+      const logMessage = msg.text();
+      if (logLevel === 'debug') return;
+
+      if (logMessage.includes('Download the React DevTools')) return;
+      if (logMessage.includes('languageChanged en')) return;
+      if (logMessage.includes('i18next: initialized {debug: true')) return;
+      console.log(`[browser:${logLevel}]`, logMessage);
     });
 
-    // Add default handlers for common routes that plugins typically access
-    // These can be overridden by explicit mock calls
-    if (!this.supabaseRoutes[this.createRouteKey('GET', `${this.rimoriInfo.url}/rest/v1/plugin_settings`)]) {
-      // Default: no settings exist (null) - triggers INSERT flow
-      // Can be overridden with mockGetSettings() to return existing settings
-      this.plugin.mockGetSettings(null);
-    }
-
-    if (!this.supabaseRoutes[this.createRouteKey('PATCH', `${this.rimoriInfo.url}/rest/v1/plugin_settings`)]) {
-      // Default PATCH handler for plugin_settings - returns empty array (no rows updated)
-      // This triggers INSERT (POST) flow
-      // Can be overridden with mockSetSettings() to simulate successful update
-      this.plugin.mockSetSettings([]);
-    }
-
-    if (!this.supabaseRoutes[this.createRouteKey('POST', `${this.rimoriInfo.url}/rest/v1/plugin_settings`)]) {
-      // Default POST handler for plugin_settings - simulates successful insert
-      // Can be overridden with mockInsertSettings() to customize response
-      this.plugin.mockInsertSettings();
-    }
+    // Set up default handlers for plugin_settings routes using SettingsStateManager
+    this.setupSettingsRoutes();
 
     // Initialize MessageChannelSimulator to simulate parent-iframe communication
     // This makes the plugin think it's running in an iframe (not standalone mode)
@@ -206,6 +238,67 @@ export class RimoriTestEnvironment {
     // Initialize the simulator - this injects the necessary shims
     // to intercept window.parent.postMessage calls and set up MessageChannel communication
     await this.messageChannelSimulator.initialize();
+
+    // Set up a no-op handler for pl454583483.session.triggerUrlChange
+    // This prevents errors if the plugin emits this event
+    this.messageChannelSimulator.on(`${this.pluginId}.session.triggerUrlChange`, () => {
+      // No-op handler - does nothing
+    });
+  }
+
+  /**
+   * Sets up the plugin_settings routes to use the SettingsStateManager.
+   * GET returns current state, PATCH updates state, POST creates/updates state.
+   */
+  private setupSettingsRoutes(): void {
+    // GET: Return current settings state
+    this.addSupabaseRoute('plugin_settings', () => this.settingsManager.getSettings(), {
+      method: 'GET',
+    });
+
+    // PATCH: Update settings based on request body
+    this.addSupabaseRoute(
+      'plugin_settings',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const updates = JSON.parse(postData) as Partial<PluginSettings>;
+            return this.settingsManager.updateSettings(updates);
+          }
+          // If no body, return empty array (no update)
+          return this.settingsManager.updateSettings({});
+        } catch {
+          // If parsing fails, return empty array
+          return this.settingsManager.updateSettings({});
+        }
+      },
+      {
+        method: 'PATCH',
+      },
+    );
+
+    // POST: Insert/update settings based on request body
+    this.addSupabaseRoute(
+      'plugin_settings',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const newSettings = JSON.parse(postData) as Partial<PluginSettings>;
+            return this.settingsManager.insertSettings(newSettings);
+          }
+          // If no body, insert with defaults
+          return this.settingsManager.insertSettings({});
+        } catch {
+          // If parsing fails, insert with defaults
+          return this.settingsManager.insertSettings({});
+        }
+      },
+      {
+        method: 'POST',
+      },
+    );
   }
 
   /**
@@ -274,11 +367,12 @@ export class RimoriTestEnvironment {
     const requestUrl = request.url();
     const method = request.method().toUpperCase() as HttpMethod;
     const routeKey = this.createRouteKey(method, requestUrl);
-    console.log('Handling route', routeKey);
+    // console.log('Handling route', routeKey);
 
     const mocks = routes[routeKey];
     if (!mocks || mocks.length === 0) {
       console.error('No route handler found for route', routeKey);
+      throw new Error('No route handler found for route: ' + routeKey);
       route.abort('not_found');
       return;
     }
@@ -324,10 +418,16 @@ export class RimoriTestEnvironment {
       return await route.abort(options.error);
     }
 
+    // Handle function-based mocks (for stateful responses like settings)
+    let responseValue = matchingMock.value;
+    if (typeof matchingMock.value === 'function') {
+      responseValue = await matchingMock.value(request);
+    }
+
     // Handle streaming responses (for mockGetSteamedText)
     // Since Playwright requires complete body, we format as SSE without delays
-    if (matchingMock.isStreaming && typeof matchingMock.value === 'string') {
-      const body = this.formatAsSSE(matchingMock.value);
+    if (matchingMock.isStreaming && typeof responseValue === 'string') {
+      const body = this.formatAsSSE(responseValue);
 
       return await route.fulfill({
         status: 200,
@@ -337,7 +437,7 @@ export class RimoriTestEnvironment {
     }
 
     // Regular JSON response
-    const responseBody = JSON.stringify(matchingMock.value);
+    const responseBody = JSON.stringify(responseValue);
 
     route.fulfill({
       status: 200,
@@ -391,61 +491,40 @@ export class RimoriTestEnvironment {
 
   public readonly plugin = {
     /**
-     * Mocks PATCH request for updating plugin_settings.
-     * @param response - The response for PATCH. Defaults to empty array (no rows updated).
-     *                   Should return array with updated row(s) like [{ id: '...' }] if update succeeds.
+     * Manually set the settings state (useful for test setup).
+     * This directly modifies the internal settings state.
+     * @param settings - The settings to set, or null to clear settings
      */
-    mockSetSettings: (response?: unknown, options?: MockOptions) => {
-      console.log('Mocking set settings for mockSetSettings', response, options);
-      console.warn('mockSetSettings is not tested');
-
-      // PATCH request returns array of updated rows
-      // Empty array means no rows matched (will trigger INSERT)
-      // Array with items means update succeeded
-      const defaultResponse = response ?? [];
-      this.addSupabaseRoute('plugin_settings', defaultResponse, { ...options, method: 'PATCH' });
+    setSettings: (settings: PluginSettings | null) => {
+      this.settingsManager.setSettings(settings);
     },
     /**
-     * Mocks GET request for fetching plugin_settings.
-     * @param settingsRow - The full row object from plugin_settings table, or null if not found.
-     *                      Should include: { id, plugin_id, guild_id, settings, is_guild_setting, user_id }.
-     *                      If null, simulates no settings exist (triggers INSERT flow).
+     * Get the current settings state (useful for assertions).
+     * @returns The current settings or null if no settings exist
      */
-    mockGetSettings: (
-      settingsRow: {
-        id?: string;
-        plugin_id?: string;
-        guild_id?: string;
-        settings?: Record<string, unknown>;
-        is_guild_setting?: boolean;
-        user_id?: string | null;
-      } | null,
-      options?: MockOptions,
-    ) => {
-      console.log('Mocking get settings for mockGetSettings', settingsRow, options);
-      console.warn('mockGetSettings is not tested');
-
-      // GET request returns the full row or null (from maybeSingle())
-      // null means no settings exist, which triggers setSettings() -> INSERT
-      this.addSupabaseRoute('plugin_settings', settingsRow, options);
+    getSettings: (): PluginSettings | null => {
+      return this.settingsManager.getSettings();
     },
     /**
-     * Mocks POST request for inserting plugin_settings.
-     * @param response - The response for POST. Defaults to success response with inserted row.
+     * Override the GET handler for plugin_settings (rarely needed).
+     * By default, GET returns the current state from SettingsStateManager.
      */
-    mockInsertSettings: (response?: unknown, options?: MockOptions) => {
-      console.log('Mocking insert settings for mockInsertSettings', response, options);
-      console.warn('mockInsertSettings is not tested');
-      // TODO this function should not exist and possibly be combined with the mockSetSettings function
-
-      // POST request returns the inserted row or success response
-      // Default to an object representing successful insert
-      const defaultResponse = response ?? {
-        id: 'mock-settings-id',
-        plugin_id: this.pluginId,
-        guild_id: this.rimoriInfo.guild.id,
-      };
-      this.addSupabaseRoute('plugin_settings', defaultResponse, { ...options, method: 'POST' });
+    mockGetSettings: (settingsRow: PluginSettings | null, options?: MockOptions) => {
+      this.addSupabaseRoute('plugin_settings', settingsRow, { ...options, method: 'GET' });
+    },
+    /**
+     * Override the PATCH handler for plugin_settings (rarely needed).
+     * By default, PATCH updates the state in SettingsStateManager.
+     */
+    mockSetSettings: (response: unknown, options?: MockOptions) => {
+      this.addSupabaseRoute('plugin_settings', response, { ...options, method: 'PATCH' });
+    },
+    /**
+     * Override the POST handler for plugin_settings (rarely needed).
+     * By default, POST inserts/updates the state in SettingsStateManager.
+     */
+    mockInsertSettings: (response: unknown, options?: MockOptions) => {
+      this.addSupabaseRoute('plugin_settings', response, { ...options, method: 'POST' });
     },
     mockGetUserInfo: (userInfo: Partial<UserInfo>, options?: MockOptions) => {
       console.log('Mocking get user info for mockGetUserInfo', userInfo, options);
@@ -476,7 +555,7 @@ export class RimoriTestEnvironment {
      * @param options - Mock options including HTTP method (defaults to 'GET' if not specified)
      */
     mockFrom: (tableName: string, value: unknown, options?: MockOptions) => {
-      console.log('Mocking db.from for table:', tableName, 'method:', options?.method ?? 'GET', value, options);
+      // console.log('Mocking db.from for table:', tableName, 'method:', options?.method ?? 'GET', value, options);
 
       const fullTableName = `${this.pluginId}_${tableName}`;
       this.addSupabaseRoute(fullTableName, value, options);
@@ -626,22 +705,15 @@ export class RimoriTestEnvironment {
      * @param options - Optional mock options.
      */
     mockGetSteamedText: (text: string, options?: MockOptions) => {
-      console.log('Mocking get steamed text for mockGetSteamedText', text, options);
-
       this.addBackendRoute('/ai/llm', text, { ...options, isStreaming: true });
     },
     mockGetVoice: (values: Buffer, options?: MockOptions) => {
-      console.log('Mocking get voice for mockGetVoice', values, options);
-      console.warn('mockGetVoice is not tested');
       this.addBackendRoute('/voice/tts', values, options);
     },
     mockGetTextFromVoice: (text: string, options?: MockOptions) => {
-      console.log('Mocking get text from voice for mockGetTextFromVoice', text, options);
-      console.warn('mockGetTextFromVoice is not tested');
       this.addBackendRoute('/voice/stt', text, options);
     },
     mockGetObject: (value: unknown, options?: MockOptions) => {
-      console.log('Mocking get object for mockGetObject', value, options);
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
     },
   };
