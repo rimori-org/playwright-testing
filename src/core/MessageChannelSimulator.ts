@@ -2,98 +2,7 @@ import type { Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
-
-type Language = {
-  code: string;
-  name: string;
-  native: string;
-  capitalized: string;
-  uppercase: string;
-};
-
-type StudyBuddy = {
-  id: string;
-  name: string;
-  description: string;
-  avatarUrl: string;
-  voiceId: string;
-  aiPersonality: string;
-};
-
-export type UserInfo = {
-  mother_tongue: Language;
-  target_language: Language;
-  skill_level_reading: string;
-  skill_level_writing: string;
-  skill_level_grammar: string;
-  skill_level_speaking: string;
-  skill_level_listening: string;
-  skill_level_understanding: string;
-  goal_longterm: string;
-  goal_weekly: string;
-  study_buddy: StudyBuddy;
-  story_genre: string;
-  study_duration: number;
-  motivation_type: string;
-  onboarding_completed: boolean;
-  context_menu_on_select: boolean;
-  user_name?: string;
-  target_country: string;
-  target_city?: string;
-};
-
-type RimoriGuild = {
-  id: string;
-  longTermGoalOverride: string;
-  allowUserPluginSettings: boolean;
-};
-
-type PluginInfo = {
-  id: string;
-  title: string;
-  description: string;
-  logo: string;
-  url: string;
-};
-
-type RimoriInfo = {
-  url: string;
-  key: string;
-  backendUrl: string;
-  token: string;
-  expiration: Date;
-  tablePrefix: string;
-  pluginId: string;
-  guild: RimoriGuild;
-  installedPlugins: PluginInfo[];
-  profile: UserInfo;
-  mainPanelPlugin?: PluginInfo;
-  sidePanelPlugin?: PluginInfo;
-};
-
-type SerializedRimoriInfo = {
-  url: string;
-  key: string;
-  backendUrl: string;
-  token: string;
-  expiration: string;
-  tablePrefix: string;
-  pluginId: string;
-  guild: RimoriGuild;
-  installedPlugins: PluginInfo[];
-  profile: UserInfo;
-  mainPanelPlugin?: PluginInfo;
-  sidePanelPlugin?: PluginInfo;
-};
-
-type EventBusMessage = {
-  timestamp: string;
-  sender: string;
-  topic: string;
-  data: unknown;
-  debug: boolean;
-  eventId?: number;
-};
+import { UserInfo, RimoriInfo, EventBusMessage, EventPayload } from '@rimori/client';
 
 type PluginMessage =
   | {
@@ -124,8 +33,8 @@ type PluginMessage =
 type MessageChannelSimulatorArgs = {
   page: Page;
   pluginId: string;
+  rimoriInfo: RimoriInfo;
   queryParams?: Record<string, string>;
-  rimoriInfo?: RimoriInfo;
 };
 
 type EventListener = (event: EventBusMessage) => void | Promise<void>;
@@ -136,15 +45,12 @@ export class MessageChannelSimulator {
   private readonly page: Page;
   private readonly pluginId: string;
   private readonly queryParams: Record<string, string>;
-  private readonly baseUserInfo: UserInfo;
-  private readonly providedInfo?: RimoriInfo;
+  private readonly rimoriInfo: RimoriInfo;
 
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly autoResponders = new Map<string, AutoResponder>();
   private readonly pendingOutbound: PluginMessage[] = [];
 
-  private currentUserInfo: UserInfo;
-  private currentRimoriInfo: RimoriInfo | null = null;
   private isReady = false;
   private instanceId = randomUUID();
 
@@ -159,19 +65,17 @@ export class MessageChannelSimulator {
     this.page = page;
     this.pluginId = pluginId;
     this.queryParams = queryParams ?? {};
-    this.baseUserInfo = this.cloneUserInfo(DEFAULT_USER_INFO);
-    this.currentUserInfo = this.cloneUserInfo(DEFAULT_USER_INFO);
-    this.providedInfo = rimoriInfo ? this.cloneRimoriInfo(rimoriInfo) : undefined;
+    this.rimoriInfo = this.cloneRimoriInfo(rimoriInfo);
 
     this.registerAutoResponders();
   }
 
   public get defaultUserInfo(): UserInfo {
-    return this.cloneUserInfo(this.baseUserInfo);
+    return this.cloneUserInfo(this.rimoriInfo.profile);
   }
 
   public get userInfo(): UserInfo {
-    return this.cloneUserInfo(this.currentUserInfo);
+    return this.cloneUserInfo(this.rimoriInfo.profile);
   }
 
   /**
@@ -274,10 +178,11 @@ export class MessageChannelSimulator {
   /**
    * Sends an event into the plugin as though the Rimori parent emitted it.
    */
-  public async emit(topic: string, data: unknown, sender = 'global'): Promise<void> {
+  public async emit(topic: string, data: EventPayload, sender = 'global'): Promise<void> {
     const message: PluginMessage = {
       event: {
         timestamp: new Date().toISOString(),
+        eventId: Math.floor(Math.random() * 1000000),
         sender,
         topic,
         data,
@@ -351,17 +256,14 @@ export class MessageChannelSimulator {
   }
 
   /**
-   * Overrides the default profile returned by the auto responders.
+   * Overrides the user info.
    */
-  public setUserInfo(overrides: Partial<UserInfo>): void {
-    this.currentUserInfo = this.mergeUserInfo(this.currentUserInfo, overrides);
-    if (this.currentRimoriInfo) {
-      this.currentRimoriInfo.profile = this.cloneUserInfo(this.currentUserInfo);
-    }
+  public setUserInfo(userInfo: UserInfo): void {
+    this.rimoriInfo.profile = userInfo;
   }
 
-  public getRimoriInfo(): RimoriInfo | null {
-    return this.currentRimoriInfo ? this.cloneRimoriInfo(this.currentRimoriInfo) : null;
+  public getRimoriInfo(): RimoriInfo {
+    return this.cloneRimoriInfo(this.rimoriInfo);
   }
 
   private async setupMessageChannel(): Promise<void> {
@@ -369,21 +271,17 @@ export class MessageChannelSimulator {
       return;
     }
 
-    const rimoriInfo = this.buildRimoriInfo();
-    this.currentRimoriInfo = rimoriInfo;
-    const serialized = this.serializeRimoriInfo(rimoriInfo);
-
     await this.page.evaluate(
       ({
         pluginId,
         queryParams,
         instanceId,
-        rimoriInfo: info,
+        rimoriInfo,
       }: {
         pluginId: string;
         queryParams: Record<string, string>;
         instanceId: string;
-        rimoriInfo: SerializedRimoriInfo;
+        rimoriInfo: RimoriInfo;
       }) => {
         const channel = new MessageChannel();
 
@@ -406,10 +304,7 @@ export class MessageChannelSimulator {
             pluginId,
             instanceId,
             queryParams,
-            rimoriInfo: {
-              ...info,
-              expiration: new Date(info.expiration),
-            },
+            rimoriInfo,
           },
           ports: [channel.port2],
         });
@@ -420,7 +315,7 @@ export class MessageChannelSimulator {
         pluginId: this.pluginId,
         queryParams: this.queryParams,
         instanceId: this.instanceId,
-        rimoriInfo: serialized,
+        rimoriInfo: this.rimoriInfo,
       },
     );
 
@@ -515,101 +410,17 @@ export class MessageChannelSimulator {
     });
   }
 
-  private buildRimoriInfo(): RimoriInfo {
-    if (this.providedInfo) {
-      const clone = this.cloneRimoriInfo(this.providedInfo);
-      clone.profile = this.cloneUserInfo(this.currentUserInfo);
-      clone.pluginId = this.pluginId;
-      clone.tablePrefix = clone.tablePrefix || `${this.pluginId}_`;
-      return clone;
-    }
-
-    return {
-      url: 'http://localhost:3500',
-      key: 'rimori-sdk-key',
-      backendUrl: 'http://localhost:3501',
-      token: 'rimori-token',
-      expiration: new Date(Date.now() + 60 * 60 * 1000),
-      tablePrefix: `${this.pluginId}_`,
-      pluginId: this.pluginId,
-      guild: {
-        id: 'guild-test',
-        longTermGoalOverride: '',
-        allowUserPluginSettings: true,
-      },
-      installedPlugins: [
-        {
-          id: this.pluginId,
-          title: 'Test Plugin',
-          description: 'Playwright testing plugin',
-          logo: '',
-          url: 'https://plugins.rimori.localhost',
-        },
-      ],
-      profile: this.cloneUserInfo(this.currentUserInfo),
-    };
-  }
-
-  private serializeRimoriInfo(info: RimoriInfo): SerializedRimoriInfo {
-    return {
-      ...info,
-      expiration: info.expiration.toISOString(),
-    };
-  }
-
   private cloneUserInfo(input: UserInfo | typeof DEFAULT_USER_INFO): UserInfo {
     return JSON.parse(JSON.stringify(input)) as UserInfo;
   }
 
-  private mergeUserInfo(current: UserInfo, overrides: Partial<UserInfo>): UserInfo {
-    const clone = this.cloneUserInfo(current);
-
-    if (overrides.mother_tongue) {
-      clone.mother_tongue = {
-        ...clone.mother_tongue,
-        ...overrides.mother_tongue,
-      };
-    }
-
-    if (overrides.target_language) {
-      clone.target_language = {
-        ...clone.target_language,
-        ...overrides.target_language,
-      };
-    }
-
-    if (overrides.study_buddy) {
-      clone.study_buddy = {
-        ...clone.study_buddy,
-        ...overrides.study_buddy,
-      };
-    }
-
-    const { mother_tongue, target_language, study_buddy, ...rest } = overrides;
-
-    for (const [key, value] of Object.entries(rest)) {
-      if (value === undefined) {
-        continue;
-      }
-      (clone as Record<string, unknown>)[key] = value;
-    }
-
-    return clone;
-  }
-
   private registerAutoResponders(): void {
-    this.autoResponders.set('global.supabase.requestAccess', () => this.buildRimoriInfo());
-    this.autoResponders.set('global.profile.requestUserInfo', () => this.cloneUserInfo(this.currentUserInfo));
-    this.autoResponders.set('global.profile.getUserInfo', () => this.cloneUserInfo(this.currentUserInfo));
+    this.autoResponders.set('global.supabase.requestAccess', () => this.cloneRimoriInfo(this.rimoriInfo));
+    this.autoResponders.set('global.profile.requestUserInfo', () => this.cloneUserInfo(this.rimoriInfo.profile));
+    this.autoResponders.set('global.profile.getUserInfo', () => this.cloneUserInfo(this.rimoriInfo.profile));
   }
 
   private cloneRimoriInfo(info: RimoriInfo): RimoriInfo {
-    return {
-      ...info,
-      expiration: new Date(info.expiration),
-      guild: { ...info.guild },
-      installedPlugins: info.installedPlugins.map((plugin) => ({ ...plugin })),
-      profile: this.cloneUserInfo(info.profile),
-    };
+    return JSON.parse(JSON.stringify(info)) as RimoriInfo;
   }
 }

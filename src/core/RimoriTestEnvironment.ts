@@ -5,6 +5,7 @@ import { MainPanelAction, Plugin } from '@rimori/client/dist/fromRimori/PluginTy
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
+import { EventPayload } from '@rimori/client/dist/fromRimori/EventBus';
 
 interface RimoriTestEnvironmentOptions {
   page: Page;
@@ -96,40 +97,7 @@ export class RimoriTestEnvironment {
     this.page = options.page;
     this.pluginId = options.pluginId;
 
-    // TODO move to a function
-    this.rimoriInfo = {
-      key: 'rimori-testing-key',
-      token: 'rimori-testing-token',
-      url: 'http://localhost:3500',
-      backendUrl: 'http://localhost:3501',
-      expiration: new Date(Date.now() + 60 * 60 * 1000),
-      tablePrefix: options.pluginId,
-      pluginId: options.pluginId,
-      guild: {
-        id: 'guild-test-id',
-        // @ts-ignore
-        name: 'Test Guild',
-        city: 'Test City',
-        country: 'Testland',
-        description: 'A dummy guild used for testing purposes.',
-        // @ts-ignore
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-02T00:00:00.000Z',
-        inviteCode: 'INVITE123',
-        isPublic: true,
-        isShadowGuild: false,
-        allowUserPluginSettings: true,
-        primaryLanguage: 'en',
-        ownerId: 'test-owner-user-id',
-        scope: 'test-scope',
-        longTermGoalOverride: '',
-      },
-      installedPlugins: options.installedPlugins ?? [],
-      profile: DEFAULT_USER_INFO,
-      mainPanelPlugin: undefined,
-      sidePanelPlugin: undefined,
-      interfaceLanguage: DEFAULT_USER_INFO.mother_tongue.code, // Set interface language from user's mother tongue
-    };
+    this.rimoriInfo = this.getRimoriInfo(options);
 
     // Initialize settings state manager
     this.settingsManager = new SettingsStateManager(
@@ -199,40 +167,7 @@ export class RimoriTestEnvironment {
       page: this.page,
       pluginId: this.pluginId,
       queryParams: {},
-      rimoriInfo: {
-        ...this.rimoriInfo,
-        guild: {
-          id: this.rimoriInfo.guild.id,
-          longTermGoalOverride:
-            'longTermGoalOverride' in this.rimoriInfo.guild ? (this.rimoriInfo.guild as any).longTermGoalOverride : '',
-          allowUserPluginSettings: this.rimoriInfo.guild.allowUserPluginSettings,
-        },
-        installedPlugins: this.rimoriInfo.installedPlugins.map((p) => ({
-          id: p.id,
-          title: p.info?.title || '',
-          description: p.info?.description || '',
-          logo: p.info?.logo || '',
-          url: p.pages?.external_hosted_url || '',
-        })),
-        mainPanelPlugin: this.rimoriInfo.mainPanelPlugin
-          ? {
-              id: this.rimoriInfo.mainPanelPlugin.id,
-              title: this.rimoriInfo.mainPanelPlugin.info?.title || '',
-              description: this.rimoriInfo.mainPanelPlugin.info?.description || '',
-              logo: this.rimoriInfo.mainPanelPlugin.info?.logo || '',
-              url: this.rimoriInfo.mainPanelPlugin.pages?.external_hosted_url || '',
-            }
-          : undefined,
-        sidePanelPlugin: this.rimoriInfo.sidePanelPlugin
-          ? {
-              id: this.rimoriInfo.sidePanelPlugin.id,
-              title: this.rimoriInfo.sidePanelPlugin.info?.title || '',
-              description: this.rimoriInfo.sidePanelPlugin.info?.description || '',
-              logo: this.rimoriInfo.sidePanelPlugin.info?.logo || '',
-              url: this.rimoriInfo.sidePanelPlugin.pages?.external_hosted_url || '',
-            }
-          : undefined,
-      },
+      rimoriInfo: this.rimoriInfo,
     });
 
     // Initialize the simulator - this injects the necessary shims
@@ -244,6 +179,48 @@ export class RimoriTestEnvironment {
     this.messageChannelSimulator.on(`${this.pluginId}.session.triggerUrlChange`, () => {
       // No-op handler - does nothing
     });
+    this.messageChannelSimulator.on("global.accomplishment.triggerMicro", () => {
+      // No-op handler - does nothing
+    });
+    this.messageChannelSimulator.on("global.accomplishment.triggerMacro", () => {
+      // No-op handler - does nothing
+    });
+  }
+
+  private getRimoriInfo(options: RimoriTestEnvironmentOptions): RimoriInfo {
+    return {
+      key: 'rimori-testing-key',
+      token: 'rimori-testing-token',
+      url: 'http://localhost:3500',
+      backendUrl: 'http://localhost:3501',
+      expiration: new Date(Date.now() + 60 * 60 * 1000),
+      tablePrefix: options.pluginId,
+      pluginId: options.pluginId,
+      guild: {
+        id: 'guild-test-id',
+        // @ts-ignore
+        name: 'Test Guild',
+        city: 'Test City',
+        country: 'Testland',
+        description: 'A dummy guild used for testing purposes.',
+        // @ts-ignore
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-02T00:00:00.000Z',
+        inviteCode: 'INVITE123',
+        isPublic: true,
+        isShadowGuild: false,
+        allowUserPluginSettings: true,
+        primaryLanguage: 'en',
+        ownerId: 'test-owner-user-id',
+        scope: 'test-scope',
+        longTermGoalOverride: '',
+      },
+      installedPlugins: options.installedPlugins ?? [],
+      profile: DEFAULT_USER_INFO,
+      mainPanelPlugin: undefined,
+      sidePanelPlugin: undefined,
+      interfaceLanguage: DEFAULT_USER_INFO.mother_tongue.code, // Set interface language from user's mother tongue
+    };
   }
 
   /**
@@ -473,7 +450,6 @@ export class RimoriTestEnvironment {
    * @param isStreaming - Optional flag to mark this as a streaming response.
    */
   private addBackendRoute(path: string, values: unknown, options?: MockOptions & { isStreaming?: boolean }): void {
-    console.warn('addBackendRoute is not tested');
     const method = options?.method ?? 'POST';
     const fullPath = `${this.rimoriInfo.backendUrl}${path.startsWith('/') ? path : '/' + path}`;
     const routeKey = this.createRouteKey(method, fullPath);
@@ -527,13 +503,9 @@ export class RimoriTestEnvironment {
       this.addSupabaseRoute('plugin_settings', response, { ...options, method: 'POST' });
     },
     mockGetUserInfo: (userInfo: Partial<UserInfo>, options?: MockOptions) => {
-      console.log('Mocking get user info for mockGetUserInfo', userInfo, options);
-      console.warn('mockGetUserInfo is not tested');
       this.addSupabaseRoute('/user-info', { ...this.rimoriInfo.profile, ...userInfo }, { ...options, delay: 0 });
     },
     mockGetPluginInfo: (pluginInfo: Plugin, options?: MockOptions) => {
-      console.log('Mocking get plugin info for mockGetPluginInfo', pluginInfo, options);
-      console.warn('mockGetPluginInfo is not tested');
       this.addSupabaseRoute('/plugin-info', pluginInfo, options);
     },
   };
@@ -570,7 +542,7 @@ export class RimoriTestEnvironment {
      * `worker/listeners/decks.ts` or `worker/listeners/flascards.ts` – those run in a
      * separate process. This helper is intended for UI‑side events only.
      */
-    mockEmit: async (topic: string, data: unknown, sender = 'test'): Promise<void> => {
+    mockEmit: async (topic: string, data: EventPayload, sender = 'test'): Promise<void> => {
       if (!this.messageChannelSimulator) {
         throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
       }
