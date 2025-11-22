@@ -127,3 +127,23 @@ jobs:
           echo "✅ Published @rimori/playwright-testing@${{ steps.version.outputs.new_version }} to npm with @next tag"
           echo "Using @rimori/client@${{ steps.client-version.outputs.version }}"
 
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload: |
+            {
+              "text": "Pre-Release Pipeline Status",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "📦 *@rimori/playwright-testing Pre-Release*\n\n*Branch:* ${{ github.ref_name }}\n*Version:* ${{ steps.version.outputs.new_version }}\n*Using @rimori/client:* ${{ steps.client-version.outputs.version }}\n*Author:* ${{ github.actor }}\n*Pipeline:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>\n\n${{ job.status == 'success' && '✅ Successfully published to npm with @next tag!' || '❌ Pipeline failed. Check the logs for details.' }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
