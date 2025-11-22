@@ -432,6 +432,7 @@ export class RimoriTestEnvironment {
     const method = options?.method ?? 'GET';
     const fullPath = `${this.rimoriInfo.url}/rest/v1/${path}`;
     const routeKey = this.createRouteKey(method, fullPath);
+    // console.log('Registering supabase route:', routeKey);
     if (!this.supabaseRoutes[routeKey]) {
       this.supabaseRoutes[routeKey] = [];
     }
@@ -873,4 +874,3 @@ export class RimoriTestEnvironment {
 }
 
 // Todo: How to test if the event was received by the parent?
-

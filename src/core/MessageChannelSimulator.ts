@@ -378,8 +378,13 @@ export class MessageChannelSimulator {
     // );
     const handlers = this.listeners.get(event.topic);
     if (!handlers?.size) {
-      console.log('[MessageChannelSimulator] No handlers found for topic:', event.topic);
-      console.log('[MessageChannelSimulator] Available topics:', Array.from(this.listeners.keys()));
+      // Don't log an error if this is a request/response event with an auto-responder
+      // (auto-responders handle request/response patterns, not listeners)
+      const hasAutoResponder = event.eventId && this.autoResponders.has(event.topic);
+      if (!hasAutoResponder) {
+        console.log('[MessageChannelSimulator] No handlers found for topic:', event.topic);
+        console.log('[MessageChannelSimulator] Available topics:', Array.from(this.listeners.keys()));
+      }
       return;
     }
 
