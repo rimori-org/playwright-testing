@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@rimori/client':
-        specifier: ^2.1.7
-        version: 2.1.7(typescript@5.9.3)
+        specifier: 2.2.0-next.1
+        version: 2.2.0-next.1(typescript@5.9.3)
     devDependencies:
       '@playwright/test':
         specifier: ^1.40.0
@@ -44,9 +44,14 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@rimori/client@2.1.7':
-    resolution: {integrity: sha512-FUaiUGJYfPVXMdRZvH2GJQTZSebL8znaVBBRhfmJh76Gz4A06f1AbCKcavOOlM34UyZDkATPgg3LWmeOp4qRPA==}
+  '@rimori/client@2.2.0-next.1':
+    resolution: {integrity: sha512-4LtjdQlIl3zsfC02ldhhveaEzS/CJlBqeTtBhZ/CIM/hq/SaiYlT8BYcHhdJYEC3sHk2d/9t3Ds8kjNXKLbyWw==}
     hasBin: true
+    peerDependencies:
+      html2canvas: ^1.4.1
+    peerDependenciesMeta:
+      html2canvas:
+        optional: true
 
   '@supabase/auth-js@2.69.1':
     resolution: {integrity: sha512-FILtt5WjCNzmReeRLq5wRs3iShwmnWgBvxHfqapC/VoljJl+W8hDAyFmf1NVw3zH+ZjZ05AKxiKxVeb0HNWRMQ==}
@@ -282,7 +287,7 @@ snapshots:
     dependencies:
       playwright: 1.56.1
 
-  '@rimori/client@2.1.7(typescript@5.9.3)':
+  '@rimori/client@2.2.0-next.1(typescript@5.9.3)':
     dependencies:
       '@supabase/supabase-js': 2.49.4
       dotenv: 16.5.0
