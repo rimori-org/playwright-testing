@@ -3,6 +3,10 @@
   "version": "0.2.3",
   "description": "Playwright testing utilities for Rimori plugins and workers",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rimori-org/playwright-testing.git"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
