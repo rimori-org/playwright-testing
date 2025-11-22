@@ -179,10 +179,10 @@ export class RimoriTestEnvironment {
     this.messageChannelSimulator.on(`${this.pluginId}.session.triggerUrlChange`, () => {
       // No-op handler - does nothing
     });
-    this.messageChannelSimulator.on("global.accomplishment.triggerMicro", () => {
+    this.messageChannelSimulator.on('global.accomplishment.triggerMicro', () => {
       // No-op handler - does nothing
     });
-    this.messageChannelSimulator.on("global.accomplishment.triggerMacro", () => {
+    this.messageChannelSimulator.on('global.accomplishment.triggerMacro', () => {
       // No-op handler - does nothing
     });
   }
@@ -873,4 +873,3 @@ export class RimoriTestEnvironment {
 }
 
 // Todo: How to test if the event was received by the parent?
-// TODO: The matcher option of RimoriTestEnvironment v1 might be useful to use
