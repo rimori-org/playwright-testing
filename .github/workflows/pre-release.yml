@@ -41,7 +41,7 @@ jobs:
           VERSION=$(npm view @rimori/client@next version 2>/dev/null || echo "")
           if [ -z "$VERSION" ]; then
             echo "⚠️  Warning: No @rimori/client@next version found. Using current dependency version."
-            VERSION=$(node -p "require('./package.json').dependencies['@rimori/client']")
+            VERSION=$(node -p "require('./package.json').peerDependencies['@rimori/client'] || require('./package.json').devDependencies['@rimori/client']")
             # Remove ^ prefix if present
             VERSION="${VERSION#^}"
           fi
@@ -50,11 +50,14 @@ jobs:
 
       - name: Update @rimori/client dependency
         run: |
-          pnpm add "@rimori/client@${{ steps.client-version.outputs.version }}" --save-exact
+          # Update devDependencies
+          pnpm add "@rimori/client@${{ steps.client-version.outputs.version }}" --save-dev --save-exact
+          # Update peerDependencies using node
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); if (pkg.peerDependencies) { pkg.peerDependencies['@rimori/client'] = '${{ steps.client-version.outputs.version }}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); }"
           echo "Updated @rimori/client to ${{ steps.client-version.outputs.version }}"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build playwright-testing (TypeScript verification)
         run: pnpm build
@@ -114,18 +117,18 @@ jobs:
         # Uses OIDC token automatically (no NODE_AUTH_TOKEN needed)
         # Requires npm 11.5.1+ and id-token: write permission (already set)
 
-      - name: Commit version bump
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml
-          git commit -m "chore: bump @rimori/playwright-testing to ${{ steps.version.outputs.new_version }} [skip ci]"
-          git push
-
       - name: Output published version
         run: |
           echo "✅ Published @rimori/playwright-testing@${{ steps.version.outputs.new_version }} to npm with @next tag"
           echo "Using @rimori/client@${{ steps.client-version.outputs.version }}"
+
+      - name: Create git tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag "v${{ steps.version.outputs.new_version }}" -m "Pre-release v${{ steps.version.outputs.new_version }}"
+          git push origin "v${{ steps.version.outputs.new_version }}"
+          echo "🏷️ Created and pushed tag v${{ steps.version.outputs.new_version }}"
 
       - name: Notify Slack
         if: always()
