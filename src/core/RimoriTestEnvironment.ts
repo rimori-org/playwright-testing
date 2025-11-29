@@ -160,6 +160,9 @@ export class RimoriTestEnvironment {
     // Set up default handlers for plugin_settings routes using SettingsStateManager
     this.setupSettingsRoutes();
 
+    // Set up default handlers for shared_content routes
+    this.setupSharedContentRoutes();
+
     // Initialize MessageChannelSimulator to simulate parent-iframe communication
     // This makes the plugin think it's running in an iframe (not standalone mode)
     // Convert RimoriInfo from CommunicationHandler format to MessageChannelSimulator format
@@ -276,6 +279,61 @@ export class RimoriTestEnvironment {
         method: 'POST',
       },
     );
+  }
+
+  /**
+   * Sets up default handlers for shared_content and shared_content_completed routes.
+   * These provide sensible defaults so tests don't need to mock every shared content call.
+   */
+  private setupSharedContentRoutes(): void {
+    // GET: Return empty array for getCompletedTopics and getSharedContentList
+    this.addSupabaseRoute('shared_content', [], { method: 'GET' });
+
+    // POST: Return created content with generated ID for createSharedContent
+    this.addSupabaseRoute(
+      'shared_content',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const content = JSON.parse(postData);
+            // Return the content with a generated ID
+            return [
+              {
+                id: `shared-content-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                ...content,
+                created_at: new Date().toISOString(),
+              },
+            ];
+          }
+          return [];
+        } catch {
+          return [];
+        }
+      },
+      { method: 'POST' }
+    );
+
+    // PATCH: Return updated content for updateSharedContent and removeSharedContent
+    this.addSupabaseRoute(
+      'shared_content',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const updates = JSON.parse(postData);
+            return [{ id: 'updated-content', ...updates }];
+          }
+          return [];
+        } catch {
+          return [];
+        }
+      },
+      { method: 'PATCH' }
+    );
+
+    // POST: Handle shared_content_completed upserts
+    this.addSupabaseRoute('shared_content_completed', {}, { method: 'POST' });
   }
 
   /**
@@ -821,14 +879,57 @@ export class RimoriTestEnvironment {
 
   public readonly community = {
     sharedContent: {
-      mockGet: () => {},
-      mockGetList: () => {},
-      mockGetNew: () => {},
-      mockCreate: () => {},
-      mockUpdate: () => {},
-      mockComplete: () => {},
-      mockUpdateState: () => {},
-      mockRemove: () => {},
+      /**
+       * Mock the shared_content GET endpoint for fetching a single item.
+       * Used by SharedContentController.getSharedContent()
+       */
+      mockGet: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
+      },
+      /**
+       * Mock the shared_content GET endpoint for fetching multiple items.
+       * Used by SharedContentController.getSharedContentList() and getCompletedTopics()
+       */
+      mockGetList: (value: unknown[], options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
+      },
+      /**
+       * Mock the shared_content POST endpoint for creating new content.
+       * Used by SharedContentController.createSharedContent() after AI generation.
+       * Note: getNewSharedContent() first calls ai.getObject() (mock via env.ai.mockGetObject),
+       * then calls createSharedContent() which hits this endpoint.
+       */
+      mockCreate: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock the shared_content PATCH endpoint for updating content.
+       * Used by SharedContentController.updateSharedContent() and removeSharedContent() (soft delete)
+       */
+      mockUpdate: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
+      },
+      /**
+       * Mock the shared_content_completed POST endpoint (upsert).
+       * Used by SharedContentController.completeSharedContent() and updateSharedContentState()
+       */
+      mockComplete: (value: unknown = {}, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock the shared_content_completed POST endpoint for state updates.
+       * Alias for mockComplete since both use upsert via POST.
+       */
+      mockUpdateState: (value: unknown = {}, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock removing shared content (soft delete via PATCH).
+       * Alias for mockUpdate since removeSharedContent uses PATCH to set deleted_at.
+       */
+      mockRemove: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
+      },
     },
   };
   public readonly exercise = {
