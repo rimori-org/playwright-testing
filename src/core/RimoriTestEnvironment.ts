@@ -13,7 +13,7 @@ interface RimoriTestEnvironmentOptions {
   pluginUrl: string;
   settings?: PluginSettings;
   queryParams?: Record<string, string>;
-  userInfo?: Record<string, unknown>;
+  userInfo?: Partial<UserInfo>;
   installedPlugins?: Plugin[];
   guildOverrides?: Record<string, unknown>;
 }
@@ -191,6 +191,36 @@ export class RimoriTestEnvironment {
   }
 
   private getRimoriInfo(options: RimoriTestEnvironmentOptions): RimoriInfo {
+    // Merge userInfo with DEFAULT_USER_INFO, with userInfo taking precedence
+    // Deep merge nested objects first, then spread the rest
+    const mergedUserInfo: UserInfo = {
+      ...DEFAULT_USER_INFO,
+      ...(options.userInfo?.mother_tongue && {
+        mother_tongue: {
+          ...DEFAULT_USER_INFO.mother_tongue,
+          ...options.userInfo.mother_tongue,
+        },
+      }),
+      ...(options.userInfo?.target_language && {
+        target_language: {
+          ...DEFAULT_USER_INFO.target_language,
+          ...options.userInfo.target_language,
+        },
+      }),
+      ...(options.userInfo?.study_buddy && {
+        study_buddy: {
+          ...DEFAULT_USER_INFO.study_buddy,
+          ...options.userInfo.study_buddy,
+        },
+      }),
+      // Spread the rest of userInfo after deep merging nested objects
+      ...Object.fromEntries(
+        Object.entries(options.userInfo || {}).filter(
+          ([key]) => !['mother_tongue', 'target_language', 'study_buddy'].includes(key),
+        ),
+      ),
+    };
+
     return {
       key: 'rimori-testing-key',
       token: 'rimori-testing-token',
@@ -219,10 +249,10 @@ export class RimoriTestEnvironment {
         longTermGoalOverride: '',
       },
       installedPlugins: options.installedPlugins ?? [],
-      profile: DEFAULT_USER_INFO,
+      profile: mergedUserInfo,
       mainPanelPlugin: undefined,
       sidePanelPlugin: undefined,
-      interfaceLanguage: DEFAULT_USER_INFO.mother_tongue.code, // Set interface language from user's mother tongue
+      interfaceLanguage: mergedUserInfo.mother_tongue.code, // Set interface language from user's mother tongue
     };
   }
 
