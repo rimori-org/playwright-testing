@@ -311,7 +311,7 @@ export class RimoriTestEnvironment {
           return [];
         }
       },
-      { method: 'POST' }
+      { method: 'POST' },
     );
 
     // PATCH: Return updated content for updateSharedContent and removeSharedContent
@@ -329,7 +329,7 @@ export class RimoriTestEnvironment {
           return [];
         }
       },
-      { method: 'PATCH' }
+      { method: 'PATCH' },
     );
 
     // POST: Handle shared_content_completed upserts
@@ -608,11 +608,11 @@ export class RimoriTestEnvironment {
       await this.messageChannelSimulator.emit(topic, data, sender);
     },
     /**
-     * Registers a one-time auto-responder for request/response style events.
+     * Registers a persistent auto-responder for request/response style events.
      *
      * When the plugin calls `plugin.event.request(topic, data)`, this registered responder
-     * will automatically return the provided response value. The responder is automatically
-     * removed after the first request, ensuring it only responds once.
+     * will automatically return the provided response value. The responder persists and
+     * will respond to multiple requests until manually removed.
      *
      * Example:
      * ```ts
@@ -622,18 +622,18 @@ export class RimoriTestEnvironment {
      * ]);
      *
      * // Now when the plugin calls: plugin.event.request('deck.requestOpenToday', {})
-     * // It will receive the deck summaries array above
+     * // It will receive the deck summaries array above (can be called multiple times)
      * ```
      *
      * @param topic - The event topic to respond to (e.g., 'deck.requestOpenToday')
      * @param response - The response value to return, or a function that receives the event and returns the response
-     * @returns A function to manually remove the responder before it's used
+     * @returns A function to manually remove the responder
      */
     mockRequest: (topic: string, response: unknown | ((event: unknown) => unknown)) => {
       if (!this.messageChannelSimulator) {
         throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
       }
-      return this.messageChannelSimulator.respondOnce(topic, response);
+      return this.messageChannelSimulator.respond(topic, response);
     },
     /**
      * Listen for events emitted by the plugin.
@@ -708,14 +708,10 @@ export class RimoriTestEnvironment {
       // Store the payload in a closure so we can respond with it
       const actionPayload = payload;
 
-      // Set up a one-time listener that responds when the plugin emits 'action.requestMain'
-      // The handler receives the event object from the plugin
-      const off = this.messageChannelSimulator.on(topic, async (event) => {
-        // When plugin emits 'action.requestMain', respond with the MainPanelAction data
-        // The sender is 'mainPanel' to match rimori-main's MainPluginHandler behavior
-        await this.messageChannelSimulator!.emit(topic, actionPayload, 'mainPanel');
-        off(); // Remove listener after responding once (one-time response like EventBus.respond)
-      });
+      // Register a persistent auto-responder (not respondOnce) because the plugin may
+      // emit this event multiple times during its lifecycle. Using respondOnce would
+      // only respond to the first request and ignore subsequent ones.
+      this.messageChannelSimulator.respond(topic, actionPayload);
     },
   };
 
@@ -744,7 +740,7 @@ export class RimoriTestEnvironment {
     mockGetTextFromVoice: (text: string, options?: MockOptions) => {
       this.addBackendRoute('/voice/stt', text, options);
     },
-    mockGetObject: (value: unknown, options?: MockOptions) => {
+    mockGetObject: (value: Record<string, unknown>, options?: MockOptions) => {
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
     },
   };
@@ -943,10 +939,6 @@ export class RimoriTestEnvironment {
   };
 
   // public readonly rimoriMain = {
-  //   mockMainPanelTriggerAction: () => {},
-  //   triggerMainPanelAction: async (data: MainPanelAction) => {
-  //     await this.messageChannel.emit('global.mainPanel.triggerAction', data, 'global.mainPanel');
-  //   },
   //   mockMainPanelActivePageChanged: () => {},
   //   triggerMainPanelActivePageChanged: async (payload: { pluginId?: string; pageId?: string }) => {
   //     await this.messageChannel.emit(
