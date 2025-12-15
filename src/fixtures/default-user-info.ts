@@ -1,4 +1,4 @@
-import { UserInfo } from '@rimori/client/src/controller/SettingsController';
+import { UserInfo } from '@rimori/client';
 
 export const DEFAULT_USER_INFO: UserInfo = {
   mother_tongue: {
