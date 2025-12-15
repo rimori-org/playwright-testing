@@ -1,0 +1,21 @@
+name: Publish Playwright Testing
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - '**'
+      - '!.github/workflows/**'
+
+jobs:
+  pre-release:
+    if: github.ref == 'refs/heads/dev'
+    uses: rimori-org/pipeline-templates/.github/workflows/package-pre-release.yml@main
+    secrets: inherit
+
+  release:
+    if: github.ref == 'refs/heads/main'
+    uses: rimori-org/pipeline-templates/.github/workflows/package-release-on-merge.yml@main
+    secrets: inherit
