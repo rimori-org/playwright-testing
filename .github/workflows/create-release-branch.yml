@@ -1,0 +1,12 @@
+name: Create Release Branch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * 1' # Monday at 11:00 UTC
+    - cron: '0 11 * * 4' # Thursday at 11:00 UTC
+
+jobs:
+  create-release:
+    uses: rimori-org/pipeline-templates/.github/workflows/package-create-release-branch.yml@main
+    secrets: inherit

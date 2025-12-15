@@ -4,7 +4,7 @@ import { RimoriTestEnvironment } from '../core/RimoriTestEnvironment';
 const pluginId = 'pl7720512027';
 const pluginUrl = 'http://localhost:3009';
 
-test.describe('Translator Plugin', () => {
+test.describe('Demo Plugin', () => {
   let env: RimoriTestEnvironment;
 
   test.beforeEach(async ({ page }) => {

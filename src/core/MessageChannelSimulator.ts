@@ -219,6 +219,32 @@ export class MessageChannelSimulator {
   }
 
   /**
+   * Registers a persistent auto-responder for a request/response topic.
+   * The responder will continue to respond to all requests with the given topic
+   * until explicitly removed.
+   *
+   * @param topic - The event topic to respond to
+   * @param responder - A function that returns the response data, or a value to return directly
+   * @returns A function to manually remove the responder
+   */
+  public respond(topic: string, responder: AutoResponder | unknown): () => void {
+    const wrappedResponder: AutoResponder = (event) => {
+      // If responder is a function, call it with the event, otherwise return the value directly
+      if (typeof responder === 'function') {
+        return (responder as AutoResponder)(event);
+      }
+      return responder;
+    };
+
+    this.autoResponders.set(topic, wrappedResponder);
+
+    // Return a function to manually remove the responder
+    return () => {
+      this.autoResponders.delete(topic);
+    };
+  }
+
+  /**
    * Registers a one-time auto-responder for a request/response topic.
    * When a request with an eventId comes in for this topic, the responder will
    * be called once and then automatically removed.
@@ -378,8 +404,13 @@ export class MessageChannelSimulator {
     // );
     const handlers = this.listeners.get(event.topic);
     if (!handlers?.size) {
-      console.log('[MessageChannelSimulator] No handlers found for topic:', event.topic);
-      console.log('[MessageChannelSimulator] Available topics:', Array.from(this.listeners.keys()));
+      // Don't log an error if this is a request/response event with an auto-responder
+      // (auto-responders handle request/response patterns, not listeners)
+      const hasAutoResponder = event.eventId && this.autoResponders.has(event.topic);
+      if (!hasAutoResponder) {
+        console.log('[MessageChannelSimulator] No handlers found for topic:', event.topic);
+        console.log('[MessageChannelSimulator] Available topics:', Array.from(this.listeners.keys()));
+      }
       return;
     }
 

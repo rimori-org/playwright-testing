@@ -13,7 +13,7 @@ interface RimoriTestEnvironmentOptions {
   pluginUrl: string;
   settings?: PluginSettings;
   queryParams?: Record<string, string>;
-  userInfo?: Record<string, unknown>;
+  userInfo?: Partial<UserInfo>;
   installedPlugins?: Plugin[];
   guildOverrides?: Record<string, unknown>;
 }
@@ -160,6 +160,9 @@ export class RimoriTestEnvironment {
     // Set up default handlers for plugin_settings routes using SettingsStateManager
     this.setupSettingsRoutes();
 
+    // Set up default handlers for shared_content routes
+    this.setupSharedContentRoutes();
+
     // Initialize MessageChannelSimulator to simulate parent-iframe communication
     // This makes the plugin think it's running in an iframe (not standalone mode)
     // Convert RimoriInfo from CommunicationHandler format to MessageChannelSimulator format
@@ -188,6 +191,36 @@ export class RimoriTestEnvironment {
   }
 
   private getRimoriInfo(options: RimoriTestEnvironmentOptions): RimoriInfo {
+    // Merge userInfo with DEFAULT_USER_INFO, with userInfo taking precedence
+    // Deep merge nested objects first, then spread the rest
+    const mergedUserInfo: UserInfo = {
+      ...DEFAULT_USER_INFO,
+      ...(options.userInfo?.mother_tongue && {
+        mother_tongue: {
+          ...DEFAULT_USER_INFO.mother_tongue,
+          ...options.userInfo.mother_tongue,
+        },
+      }),
+      ...(options.userInfo?.target_language && {
+        target_language: {
+          ...DEFAULT_USER_INFO.target_language,
+          ...options.userInfo.target_language,
+        },
+      }),
+      ...(options.userInfo?.study_buddy && {
+        study_buddy: {
+          ...DEFAULT_USER_INFO.study_buddy,
+          ...options.userInfo.study_buddy,
+        },
+      }),
+      // Spread the rest of userInfo after deep merging nested objects
+      ...Object.fromEntries(
+        Object.entries(options.userInfo || {}).filter(
+          ([key]) => !['mother_tongue', 'target_language', 'study_buddy'].includes(key),
+        ),
+      ),
+    };
+
     return {
       key: 'rimori-testing-key',
       token: 'rimori-testing-token',
@@ -216,10 +249,10 @@ export class RimoriTestEnvironment {
         longTermGoalOverride: '',
       },
       installedPlugins: options.installedPlugins ?? [],
-      profile: DEFAULT_USER_INFO,
+      profile: mergedUserInfo,
       mainPanelPlugin: undefined,
       sidePanelPlugin: undefined,
-      interfaceLanguage: DEFAULT_USER_INFO.mother_tongue.code, // Set interface language from user's mother tongue
+      interfaceLanguage: mergedUserInfo.mother_tongue.code, // Set interface language from user's mother tongue
     };
   }
 
@@ -276,6 +309,61 @@ export class RimoriTestEnvironment {
         method: 'POST',
       },
     );
+  }
+
+  /**
+   * Sets up default handlers for shared_content and shared_content_completed routes.
+   * These provide sensible defaults so tests don't need to mock every shared content call.
+   */
+  private setupSharedContentRoutes(): void {
+    // GET: Return empty array for getCompletedTopics and getSharedContentList
+    this.addSupabaseRoute('shared_content', [], { method: 'GET' });
+
+    // POST: Return created content with generated ID for createSharedContent
+    this.addSupabaseRoute(
+      'shared_content',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const content = JSON.parse(postData);
+            // Return the content with a generated ID
+            return [
+              {
+                id: `shared-content-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                ...content,
+                created_at: new Date().toISOString(),
+              },
+            ];
+          }
+          return [];
+        } catch {
+          return [];
+        }
+      },
+      { method: 'POST' },
+    );
+
+    // PATCH: Return updated content for updateSharedContent and removeSharedContent
+    this.addSupabaseRoute(
+      'shared_content',
+      async (request: Request) => {
+        try {
+          const postData = request.postData();
+          if (postData) {
+            const updates = JSON.parse(postData);
+            return [{ id: 'updated-content', ...updates }];
+          }
+          return [];
+        } catch {
+          return [];
+        }
+      },
+      { method: 'PATCH' },
+    );
+
+    // POST: Handle shared_content_completed upserts
+    this.addSupabaseRoute('shared_content_completed', {}, { method: 'POST' });
   }
 
   /**
@@ -432,6 +520,7 @@ export class RimoriTestEnvironment {
     const method = options?.method ?? 'GET';
     const fullPath = `${this.rimoriInfo.url}/rest/v1/${path}`;
     const routeKey = this.createRouteKey(method, fullPath);
+    // console.log('Registering supabase route:', routeKey);
     if (!this.supabaseRoutes[routeKey]) {
       this.supabaseRoutes[routeKey] = [];
     }
@@ -549,11 +638,11 @@ export class RimoriTestEnvironment {
       await this.messageChannelSimulator.emit(topic, data, sender);
     },
     /**
-     * Registers a one-time auto-responder for request/response style events.
+     * Registers a persistent auto-responder for request/response style events.
      *
      * When the plugin calls `plugin.event.request(topic, data)`, this registered responder
-     * will automatically return the provided response value. The responder is automatically
-     * removed after the first request, ensuring it only responds once.
+     * will automatically return the provided response value. The responder persists and
+     * will respond to multiple requests until manually removed.
      *
      * Example:
      * ```ts
@@ -563,18 +652,18 @@ export class RimoriTestEnvironment {
      * ]);
      *
      * // Now when the plugin calls: plugin.event.request('deck.requestOpenToday', {})
-     * // It will receive the deck summaries array above
+     * // It will receive the deck summaries array above (can be called multiple times)
      * ```
      *
      * @param topic - The event topic to respond to (e.g., 'deck.requestOpenToday')
      * @param response - The response value to return, or a function that receives the event and returns the response
-     * @returns A function to manually remove the responder before it's used
+     * @returns A function to manually remove the responder
      */
     mockRequest: (topic: string, response: unknown | ((event: unknown) => unknown)) => {
       if (!this.messageChannelSimulator) {
         throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
       }
-      return this.messageChannelSimulator.respondOnce(topic, response);
+      return this.messageChannelSimulator.respond(topic, response);
     },
     /**
      * Listen for events emitted by the plugin.
@@ -649,14 +738,10 @@ export class RimoriTestEnvironment {
       // Store the payload in a closure so we can respond with it
       const actionPayload = payload;
 
-      // Set up a one-time listener that responds when the plugin emits 'action.requestMain'
-      // The handler receives the event object from the plugin
-      const off = this.messageChannelSimulator.on(topic, async (event) => {
-        // When plugin emits 'action.requestMain', respond with the MainPanelAction data
-        // The sender is 'mainPanel' to match rimori-main's MainPluginHandler behavior
-        await this.messageChannelSimulator!.emit(topic, actionPayload, 'mainPanel');
-        off(); // Remove listener after responding once (one-time response like EventBus.respond)
-      });
+      // Register a persistent auto-responder (not respondOnce) because the plugin may
+      // emit this event multiple times during its lifecycle. Using respondOnce would
+      // only respond to the first request and ignore subsequent ones.
+      this.messageChannelSimulator.respond(topic, actionPayload);
     },
   };
 
@@ -685,7 +770,7 @@ export class RimoriTestEnvironment {
     mockGetTextFromVoice: (text: string, options?: MockOptions) => {
       this.addBackendRoute('/voice/stt', text, options);
     },
-    mockGetObject: (value: unknown, options?: MockOptions) => {
+    mockGetObject: (value: Record<string, unknown>, options?: MockOptions) => {
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
     },
   };
@@ -820,14 +905,57 @@ export class RimoriTestEnvironment {
 
   public readonly community = {
     sharedContent: {
-      mockGet: () => {},
-      mockGetList: () => {},
-      mockGetNew: () => {},
-      mockCreate: () => {},
-      mockUpdate: () => {},
-      mockComplete: () => {},
-      mockUpdateState: () => {},
-      mockRemove: () => {},
+      /**
+       * Mock the shared_content GET endpoint for fetching a single item.
+       * Used by SharedContentController.getSharedContent()
+       */
+      mockGet: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
+      },
+      /**
+       * Mock the shared_content GET endpoint for fetching multiple items.
+       * Used by SharedContentController.getSharedContentList() and getCompletedTopics()
+       */
+      mockGetList: (value: unknown[], options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
+      },
+      /**
+       * Mock the shared_content POST endpoint for creating new content.
+       * Used by SharedContentController.createSharedContent() after AI generation.
+       * Note: getNewSharedContent() first calls ai.getObject() (mock via env.ai.mockGetObject),
+       * then calls createSharedContent() which hits this endpoint.
+       */
+      mockCreate: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock the shared_content PATCH endpoint for updating content.
+       * Used by SharedContentController.updateSharedContent() and removeSharedContent() (soft delete)
+       */
+      mockUpdate: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
+      },
+      /**
+       * Mock the shared_content_completed POST endpoint (upsert).
+       * Used by SharedContentController.completeSharedContent() and updateSharedContentState()
+       */
+      mockComplete: (value: unknown = {}, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock the shared_content_completed POST endpoint for state updates.
+       * Alias for mockComplete since both use upsert via POST.
+       */
+      mockUpdateState: (value: unknown = {}, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
+      },
+      /**
+       * Mock removing shared content (soft delete via PATCH).
+       * Alias for mockUpdate since removeSharedContent uses PATCH to set deleted_at.
+       */
+      mockRemove: (value: unknown, options?: MockOptions) => {
+        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
+      },
     },
   };
   public readonly exercise = {
@@ -841,10 +969,6 @@ export class RimoriTestEnvironment {
   };
 
   // public readonly rimoriMain = {
-  //   mockMainPanelTriggerAction: () => {},
-  //   triggerMainPanelAction: async (data: MainPanelAction) => {
-  //     await this.messageChannel.emit('global.mainPanel.triggerAction', data, 'global.mainPanel');
-  //   },
   //   mockMainPanelActivePageChanged: () => {},
   //   triggerMainPanelActivePageChanged: async (payload: { pluginId?: string; pageId?: string }) => {
   //     await this.messageChannel.emit(
