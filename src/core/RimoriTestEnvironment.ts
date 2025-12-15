@@ -967,33 +967,4 @@ export class RimoriTestEnvironment {
   public readonly navigation = {
     mockToDashboard: () => {},
   };
-
-  // public readonly rimoriMain = {
-  //   mockMainPanelActivePageChanged: () => {},
-  //   triggerMainPanelActivePageChanged: async (payload: { pluginId?: string; pageId?: string }) => {
-  //     await this.messageChannel.emit(
-  //       'global.mainPanel.triggerActivePageChanged',
-  //       { pluginId: payload.pluginId ?? this.pluginId, pageId: payload.pageId },
-  //       'global.mainPanel',
-  //     );
-  //   },
-  //   mockSidebarTriggerAction: () => {},
-  //   triggerSidebarAction: async (payload: { pluginId: string; actionKey: string; text?: string }) => {
-  //     await this.messageChannel.emit('global.sidebar.triggerAction', payload, 'global.sidebar');
-  //   },
-  //   mockNavigationTriggerToDashboard: () => {},
-  //   triggerNavigationToDashboard: async () => {
-  //     await this.messageChannel.emit('global.navigation.triggerToDashboard', {}, 'global.navigation');
-  //   },
-  //   mockLoggingRequestPluginLogs: () => {},
-  //   requestPluginLogs: async () => {
-  //     await this.messageChannel.emit('global.logging.requestPluginLogs', {}, 'global.logging');
-  //   },
-  //   mockSessionTriggerUrlChange: () => {},
-  //   triggerSessionUrlChange: async (url: string) => {
-  //     await this.messageChannel.emit(`${this.pluginId}.session.triggerUrlChange`, { url }, this.pluginId);
-  //   },
-  // };
 }
-
-// Todo: How to test if the event was received by the parent?
