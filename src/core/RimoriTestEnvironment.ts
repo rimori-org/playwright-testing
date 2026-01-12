@@ -182,6 +182,9 @@ export class RimoriTestEnvironment {
     this.messageChannelSimulator.on(`${this.pluginId}.session.triggerUrlChange`, () => {
       // No-op handler - does nothing
     });
+    this.messageChannelSimulator.on(`${this.pluginId}.session.triggerScrollbarChange`, () => {
+      // No-op handler - does nothing
+    });
     this.messageChannelSimulator.on('global.accomplishment.triggerMicro', () => {
       // No-op handler - does nothing
     });
