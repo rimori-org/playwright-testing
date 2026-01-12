@@ -312,58 +312,14 @@ export class RimoriTestEnvironment {
   }
 
   /**
-   * Sets up default handlers for shared_content and shared_content_completed routes.
-   * These provide sensible defaults so tests don't need to mock every shared content call.
+   * Sets up default handlers for shared content routes.
+   * Note: Shared content tables are now plugin-specific with format: `${pluginId}_sc_${tableName}`
+   * This method no longer sets up generic routes since each plugin has its own tables.
+   * Use the community.sharedContent mock methods to set up specific table mocks.
    */
   private setupSharedContentRoutes(): void {
-    // GET: Return empty array for getCompletedTopics and getSharedContentList
-    this.addSupabaseRoute('shared_content', [], { method: 'GET' });
-
-    // POST: Return created content with generated ID for createSharedContent
-    this.addSupabaseRoute(
-      'shared_content',
-      async (request: Request) => {
-        try {
-          const postData = request.postData();
-          if (postData) {
-            const content = JSON.parse(postData);
-            // Return the content with a generated ID
-            return [
-              {
-                id: `shared-content-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                ...content,
-                created_at: new Date().toISOString(),
-              },
-            ];
-          }
-          return [];
-        } catch {
-          return [];
-        }
-      },
-      { method: 'POST' },
-    );
-
-    // PATCH: Return updated content for updateSharedContent and removeSharedContent
-    this.addSupabaseRoute(
-      'shared_content',
-      async (request: Request) => {
-        try {
-          const postData = request.postData();
-          if (postData) {
-            const updates = JSON.parse(postData);
-            return [{ id: 'updated-content', ...updates }];
-          }
-          return [];
-        } catch {
-          return [];
-        }
-      },
-      { method: 'PATCH' },
-    );
-
-    // POST: Handle shared_content_completed upserts
-    this.addSupabaseRoute('shared_content_completed', {}, { method: 'POST' });
+    // No longer setting up generic routes - each plugin has its own prefixed tables
+    // Tests should use env.community.sharedContent.mock* methods for specific tables
   }
 
   /**
@@ -903,59 +859,160 @@ export class RimoriTestEnvironment {
     mockFetchBackend: () => {},
   };
 
-  public readonly community = {
-    sharedContent: {
-      /**
-       * Mock the shared_content GET endpoint for fetching a single item.
-       * Used by SharedContentController.getSharedContent()
-       */
-      mockGet: (value: unknown, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
-      },
-      /**
-       * Mock the shared_content GET endpoint for fetching multiple items.
-       * Used by SharedContentController.getSharedContentList() and getCompletedTopics()
-       */
-      mockGetList: (value: unknown[], options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content', value, { ...options, method: 'GET' });
-      },
-      /**
-       * Mock the shared_content POST endpoint for creating new content.
-       * Used by SharedContentController.createSharedContent() after AI generation.
-       * Note: getNewSharedContent() first calls ai.getObject() (mock via env.ai.mockGetObject),
-       * then calls createSharedContent() which hits this endpoint.
-       */
-      mockCreate: (value: unknown, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content', value, { ...options, method: 'POST' });
-      },
-      /**
-       * Mock the shared_content PATCH endpoint for updating content.
-       * Used by SharedContentController.updateSharedContent() and removeSharedContent() (soft delete)
-       */
-      mockUpdate: (value: unknown, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
-      },
-      /**
-       * Mock the shared_content_completed POST endpoint (upsert).
-       * Used by SharedContentController.completeSharedContent() and updateSharedContentState()
-       */
-      mockComplete: (value: unknown = {}, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
-      },
-      /**
-       * Mock the shared_content_completed POST endpoint for state updates.
-       * Alias for mockComplete since both use upsert via POST.
-       */
-      mockUpdateState: (value: unknown = {}, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content_completed', value, { ...options, method: 'POST' });
-      },
-      /**
-       * Mock removing shared content (soft delete via PATCH).
-       * Alias for mockUpdate since removeSharedContent uses PATCH to set deleted_at.
-       */
-      mockRemove: (value: unknown, options?: MockOptions) => {
-        this.addSupabaseRoute('shared_content', value, { ...options, method: 'PATCH' });
-      },
+  public readonly sharedContent = {
+    /**
+     * Mock the /shared-content/generate backend endpoint.
+     * Used by SharedContentController.getNew() to generate new content with AI.
+     * @param value - The generated content to return
+     * @param options - Optional mock options
+     */
+    mockGenerate: (value: unknown, options?: MockOptions) => {
+      this.addBackendRoute('/shared-content/generate', value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock embedding generation endpoint for RAG search.
+     * Used by SharedContentController.searchByTopic() to generate query embedding.
+     * @param value - Object with embedding array: { embedding: number[] }
+     * @param options - Optional mock options
+     */
+    mockEmbedding: (value: { embedding: number[] }, options?: MockOptions) => {
+      this.addBackendRoute('/ai/embedding', value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock RPC call for vector similarity search.
+     * Used by SharedContentController.searchByTopic() for RAG-based content search.
+     * @param value - Array of search results
+     * @param options - Optional mock options
+     */
+    mockSearchByTopic: (value: unknown, options?: MockOptions) => {
+      this.addSupabaseRoute('rpc/search_shared_content', value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock fetching bookmarked shared content.
+     * Used by SharedContentController.getBookmarked().
+     * Note: The actual query uses a join with the completion table, so the response should include
+     * the completed relation structure.
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     *                    The full table name `${pluginId}_sc_${tableName}` is automatically added
+     * @param value - Array of content items with completed relation
+     * @param options - Optional mock options
+     */
+    mockGetBookmarked: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'GET' });
+    },
+    /**
+     * Mock fetching ongoing shared content.
+     * Used by SharedContentController.getOngoing().
+     * Note: The actual query uses a join with the completion table.
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Array of content items with completed relation
+     * @param options - Optional mock options
+     */
+    mockGetOngoing: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'GET' });
+    },
+    /**
+     * Mock fetching completed shared content.
+     * Used by SharedContentController.getCompleted().
+     * Note: The actual query uses a join with the completion table.
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Array of content items with completed relation
+     * @param options - Optional mock options
+     */
+    mockGetCompleted: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'GET' });
+    },
+    /**
+     * Mock getting a specific shared content item by ID.
+     * Used by SharedContentController.get().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Single content item (not an array)
+     * @param options - Optional mock options
+     */
+    mockGet: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'GET' });
+    },
+    /**
+     * Mock creating new shared content manually.
+     * Used by SharedContentController.create().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Created content item (single object, not array)
+     * @param options - Optional mock options
+     */
+    mockCreate: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock updating shared content.
+     * Used by SharedContentController.update().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Updated content item (single object, not array)
+     * @param options - Optional mock options
+     */
+    mockUpdate: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'PATCH' });
+    },
+    /**
+     * Mock completing shared content (marks as completed in completion table).
+     * Used by SharedContentController.complete().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     *                    The completion table name `${pluginId}_sc_${tableName}_completed` is automatically added
+     * @param value - Optional response value (defaults to empty object for upsert)
+     * @param options - Optional mock options
+     */
+    mockComplete: (tableName: string, value: unknown = {}, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}_completed`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock updating shared content state (ongoing/hidden/completed).
+     * Used by SharedContentController.updateState().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Optional response value (defaults to empty object for upsert)
+     * @param options - Optional mock options
+     */
+    mockUpdateState: (tableName: string, value: unknown = {}, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}_completed`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock bookmarking shared content.
+     * Used by SharedContentController.bookmark().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Optional response value (defaults to empty object for upsert)
+     * @param options - Optional mock options
+     */
+    mockBookmark: (tableName: string, value: unknown = {}, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}_completed`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock reacting to shared content (like/dislike).
+     * Used by SharedContentController.react().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Optional response value (defaults to empty object for upsert)
+     * @param options - Optional mock options
+     */
+    mockReact: (tableName: string, value: unknown = {}, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}_completed`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'POST' });
+    },
+    /**
+     * Mock removing shared content (DELETE).
+     * Used by SharedContentController.remove().
+     * @param tableName - Table name WITHOUT plugin prefix (e.g., 'grammar_exercises')
+     * @param value - Optional response value (DELETE typically returns empty)
+     * @param options - Optional mock options
+     */
+    mockRemove: (tableName: string, value: unknown, options?: MockOptions) => {
+      const fullTableName = `${this.pluginId}_sc_${tableName}`;
+      this.addSupabaseRoute(fullTableName, value, { ...options, method: 'DELETE' });
     },
   };
   public readonly exercise = {
