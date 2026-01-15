@@ -1,7 +1,7 @@
 import { UserInfo } from '@rimori/client';
 
 export const DEFAULT_USER_INFO: UserInfo = {
-  id: 'test-user-id',
+  user_id: 'test-user-id',
   mother_tongue: {
     code: 'en',
     name: 'English',
