@@ -6,6 +6,7 @@ import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
 import { EventPayload } from '@rimori/client/dist/fromRimori/EventBus';
+import { LanguageLevel } from '@rimori/client';
 
 interface RimoriTestEnvironmentOptions {
   page: Page;
@@ -180,6 +181,9 @@ export class RimoriTestEnvironment {
     // Set up a no-op handler for pl454583483.session.triggerUrlChange
     // This prevents errors if the plugin emits this event
     this.messageChannelSimulator.on(`${this.pluginId}.session.triggerUrlChange`, () => {
+      // No-op handler - does nothing
+    });
+    this.messageChannelSimulator.on(`${this.pluginId}.session.triggerScrollbarChange`, () => {
       // No-op handler - does nothing
     });
     this.messageChannelSimulator.on('global.accomplishment.triggerMicro', () => {
@@ -866,8 +870,32 @@ export class RimoriTestEnvironment {
      * @param value - The generated content to return
      * @param options - Optional mock options
      */
-    mockGenerate: (value: unknown, options?: MockOptions) => {
-      this.addBackendRoute('/shared-content/generate', value, { ...options, method: 'POST' });
+    mockGenerate: <T>(
+      value: T & {
+        id?: string;
+        created_at?: string;
+        created_by?: string;
+        lang_id?: string;
+        guild_id?: string;
+        title?: string;
+        keywords?: string[];
+        verified?: boolean;
+        skill_level?: LanguageLevel;
+      },
+      options?: MockOptions,
+    ) => {
+      const basicValues = {
+        id: '6284adca-3e74-4634-8ea6-85ff867bb5e5',
+        created_at: '2026-01-12T14:48:44.136Z',
+        created_by: 'd9f231f4-a942-4bb6-bc41-1db185969b74',
+        lang_id: 'sv',
+        guild_id: '54235057-f0d8-45cf-99aa-787b10de3eba',
+        title: 'Mitt husdjur',
+        keywords: ['husdjur', 'katt', 'hund', 'fågel', 'namn', 'färg', 'ljud', 'äta', 'gammal', 'säg'],
+        verified: true,
+        skill_level: 'Pre-A1',
+      };
+      this.addBackendRoute('/shared-content/generate', { ...basicValues, ...value }, { ...options, method: 'POST' });
     },
     /**
      * Mock embedding generation endpoint for RAG search.
