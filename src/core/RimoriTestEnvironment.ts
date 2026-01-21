@@ -449,10 +449,19 @@ export class RimoriTestEnvironment {
       responseValue = await matchingMock.value(request);
     }
 
-    // Handle streaming responses (for mockGetSteamedText)
+    // Handle streaming responses (for mockGetSteamedText and mockGetStreamedObject)
     // Since Playwright requires complete body, we format as SSE without delays
-    if (matchingMock.isStreaming && typeof responseValue === 'string') {
-      const body = this.formatAsSSE(responseValue);
+    if (matchingMock.isStreaming) {
+      let body: string;
+
+      if (typeof responseValue === 'string') {
+        // Text streaming (mockGetSteamedText)
+        body = this.formatAsSSE(responseValue);
+      } else {
+        // Object streaming (mockGetStreamedObject)
+        // Format as SSE with JSON payload, followed by [DONE] marker
+        body = `data: ${JSON.stringify(responseValue)}\n\ndata: [DONE]\n\n`;
+      }
 
       return await route.fulfill({
         status: 200,
@@ -552,7 +561,13 @@ export class RimoriTestEnvironment {
       this.addSupabaseRoute('plugin_settings', response, { ...options, method: 'POST' });
     },
     mockGetUserInfo: (userInfo: Partial<UserInfo>, options?: MockOptions) => {
-      this.addSupabaseRoute('/user-info', { ...this.rimoriInfo.profile, ...userInfo }, { ...options, delay: 0 });
+      // Update the rimoriInfo.profile so that MessageChannelSimulator returns the correct user info
+      this.rimoriInfo.profile = { ...this.rimoriInfo.profile, ...userInfo };
+      // Also update the MessageChannelSimulator if it exists (setup() has been called)
+      if (this.messageChannelSimulator) {
+        this.messageChannelSimulator.setUserInfo(this.rimoriInfo.profile);
+      }
+      this.addSupabaseRoute('/user-info', this.rimoriInfo.profile, { ...options, delay: 0 });
     },
     mockGetPluginInfo: (pluginInfo: Plugin, options?: MockOptions) => {
       this.addSupabaseRoute('/plugin-info', pluginInfo, options);
@@ -732,6 +747,9 @@ export class RimoriTestEnvironment {
     },
     mockGetObject: (value: Record<string, unknown>, options?: MockOptions) => {
       this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
+    },
+    mockGetStreamedObject: (value: Record<string, unknown>, options?: MockOptions) => {
+      this.addBackendRoute('/ai/llm-object', value, { ...options, isStreaming: true });
     },
   };
 
