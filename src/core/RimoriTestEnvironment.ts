@@ -387,6 +387,54 @@ export class RimoriTestEnvironment {
     }
   }
 
+  /**
+   * Creates a wrapper around the Playwright Request object that provides backwards compatibility
+   * for matchers. The new rimori-client sends `messages` array instead of `instructions`,
+   * so this wrapper extracts the prompts from messages and provides them as `instructions`.
+   *
+   * The old API had a single `instructions` field which typically contained the user's specific
+   * instruction (what the AI should do). The new API splits this into:
+   * - systemPrompt (messages[0] with role='system'): High-level behavior instructions
+   * - userPrompt (messages[1] with role='user'): Specific task instruction
+   *
+   * For backwards compatibility, we concatenate all message contents into `instructions`.
+   */
+  private createBackwardsCompatibleRequest(originalRequest: Request): Request {
+    // Create a proxy that intercepts postDataJSON calls
+    return new Proxy(originalRequest, {
+      get(target, prop) {
+        if (prop === 'postDataJSON') {
+          return () => {
+            try {
+              const body = target.postDataJSON();
+              if (body && body.messages && Array.isArray(body.messages) && !body.instructions) {
+                // Concatenate all message contents for backwards compatibility
+                // This allows matchers to check for text that might be in either system or user prompts
+                const allContent = body.messages
+                  .map((m: { role: string; content?: string }) => m.content || '')
+                  .filter((content: string) => content.length > 0)
+                  .join('\n');
+
+                if (allContent) {
+                  return { ...body, instructions: allContent };
+                }
+              }
+              return body;
+            } catch {
+              return null;
+            }
+          };
+        }
+        // For all other properties, return the original value bound to the target
+        const value = (target as any)[prop];
+        if (typeof value === 'function') {
+          return value.bind(target);
+        }
+        return value;
+      },
+    });
+  }
+
   private async handleRoute(route: Route, routes: Record<string, MockRecord[]>): Promise<void> {
     const request = route.request();
     const requestUrl = request.url();
@@ -402,6 +450,9 @@ export class RimoriTestEnvironment {
       return;
     }
 
+    // Create backwards-compatible request wrapper for matchers
+    const compatRequest = this.createBackwardsCompatibleRequest(request);
+
     // Find the first matching mock based on matcher function
     // Priority: mocks with matchers that match > mocks without matchers (as fallback)
     let matchingMock: MockRecord | undefined;
@@ -410,7 +461,8 @@ export class RimoriTestEnvironment {
     for (const mock of mocks) {
       if (mock.options?.matcher) {
         try {
-          if (mock.options.matcher(request)) {
+          // Use the backwards-compatible request wrapper for matchers
+          if (mock.options.matcher(compatRequest)) {
             matchingMock = mock;
             break;
           }
@@ -721,23 +773,31 @@ export class RimoriTestEnvironment {
   };
 
   public readonly ai = {
+    /**
+     * Mocks a text response from the LLM endpoint.
+     * Since getText now uses streamObject internally with a { result: string } schema,
+     * the mock value should be the full response object.
+     *
+     * @param values - The response object to return. Should include { result: string } for getText calls.
+     * @param options - Optional mock options.
+     */
     mockGetText: (values: unknown, options?: MockOptions) => {
-      console.log('Mocking get text for mockGetText', values, options);
-      console.warn('mockGetText is not tested');
-      this.addBackendRoute('/llm-text', values, options);
+      this.addBackendRoute('/ai/llm', values, { ...options, isStreaming: true });
     },
     /**
      * Mocks a streaming text response from the LLM endpoint.
-     * The text will be formatted as SSE (Server-Sent Events) to simulate streaming.
+     * The new rimori-client's getSteamedText uses streamObject internally with { result: string } schema,
+     * so the text is wrapped in a result object.
      *
      * **Note**: Due to Playwright's route.fulfill() requiring a complete response body,
      * all SSE chunks are sent at once (no delays). The client will still parse it as SSE correctly.
      *
-     * @param text - The text to stream. Will be formatted as SSE chunks.
+     * @param text - The text to stream. Will be wrapped as { result: text } and formatted as SSE.
      * @param options - Optional mock options.
      */
     mockGetSteamedText: (text: string, options?: MockOptions) => {
-      this.addBackendRoute('/ai/llm', text, { ...options, isStreaming: true });
+      // Wrap text in result object as the new client expects { result: string }
+      this.addBackendRoute('/ai/llm', { result: text }, { ...options, isStreaming: true });
     },
     mockGetVoice: (values: Buffer, options?: MockOptions) => {
       this.addBackendRoute('/voice/tts', values, options);
@@ -745,11 +805,25 @@ export class RimoriTestEnvironment {
     mockGetTextFromVoice: (text: string, options?: MockOptions) => {
       this.addBackendRoute('/voice/stt', text, options);
     },
+    /**
+     * Mocks an object response from the LLM endpoint.
+     * Since getObject now uses streamObject internally, this is a streaming response.
+     *
+     * @param value - The object to return from the LLM.
+     * @param options - Optional mock options.
+     */
     mockGetObject: (value: Record<string, unknown>, options?: MockOptions) => {
-      this.addBackendRoute('/ai/llm-object', value, { ...options, method: 'POST' });
+      this.addBackendRoute('/ai/llm', value, { ...options, isStreaming: true });
     },
+    /**
+     * Mocks a streaming object response from the LLM endpoint.
+     * Returns the object via SSE format with data: prefix.
+     *
+     * @param value - The object to stream from the LLM.
+     * @param options - Optional mock options.
+     */
     mockGetStreamedObject: (value: Record<string, unknown>, options?: MockOptions) => {
-      this.addBackendRoute('/ai/llm-object', value, { ...options, isStreaming: true });
+      this.addBackendRoute('/ai/llm', value, { ...options, isStreaming: true });
     },
   };
 
