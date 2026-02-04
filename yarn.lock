@@ -31,10 +31,10 @@
   dependencies:
     playwright "1.57.0"
 
-"@rimori/client@^2.5.12":
-  version "2.5.12"
-  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.12.tgz#9cb97f01d6f1bd25e5ca4035353ce83404e5720e"
-  integrity sha512-Hk9YqqrH3f1kvYwUp1TVHWIP2WDAptC6goXlxET2MQJOxjuOT5oLPHfsUUMbcNRMp8+a1hkacfjwq4OL3O/MQQ==
+"@rimori/client@^2.5.13":
+  version "2.5.13"
+  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.13.tgz#a51fece73cea3dcd11cb6f8fc1fc2cc403d776b7"
+  integrity sha512-xvuoveBA+19bwIue2WIaVIBFAH8ioch75lp509k3AwDXDbEXEFM+6kAKZuLp7AZy16xx+u+nR9iSNyipbahq5Q==
   dependencies:
     "@supabase/postgrest-js" "^2.87.1"
     dotenv "16.5.0"
@@ -113,6 +113,11 @@ dotenv@16.5.0:
   version "16.5.0"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.5.0.tgz#092b49f25f808f020050051d1ff258e404c78692"
   integrity sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==
+
+dotenv@^16.4.5:
+  version "16.6.1"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.6.1.tgz#773f0e69527a8315c7285d5ee73c4459d20a8020"
+  integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
 
 eastasianwidth@^0.2.0:
   version "0.2.0"
