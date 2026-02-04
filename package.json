@@ -1,6 +1,6 @@
 {
   "name": "@rimori/playwright-testing",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Playwright testing utilities for Rimori plugins and workers",
   "license": "Apache-2.0",
   "repository": {
@@ -21,13 +21,16 @@
     "test:ui": "playwright test --ui",
     "test:headed:debug": "playwright test --headed --debug"
   },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
   "peerDependencies": {
     "@playwright/test": "^1.40.0",
-    "@rimori/client": "^2.5.12"
+    "@rimori/client": "^2.5.13"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "@rimori/client": "^2.5.12",
+    "@rimori/client": "^2.5.13",
     "@types/node": "^20.12.7",
     "rimraf": "^5.0.7",
     "typescript": "^5.7.2"
