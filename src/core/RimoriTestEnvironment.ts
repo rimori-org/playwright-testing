@@ -5,7 +5,7 @@ import { MainPanelAction, Plugin } from '@rimori/client';
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
-import { EventPayload } from '@rimori/clients';
+import { EventPayload } from '@rimori/client';
 import { LanguageLevel } from '@rimori/client';
 
 interface RimoriTestEnvironmentOptions {
