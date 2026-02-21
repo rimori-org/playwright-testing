@@ -1,7 +1,7 @@
 import { config as loadEnv } from 'dotenv';
 import { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test';
 import { completeStudyPlanGettingStarted } from '../helpers/e2e/study-plan-setup';
-import { completeOnboarding } from '../helpers/e2e/onboarding';
+import { completeOnboarding, Onboarding } from '../helpers/e2e/onboarding';
 
 loadEnv();
 
@@ -22,12 +22,6 @@ interface Exercise {
   parameters?: Record<string, unknown>;
 }
 
-export interface Onboarding {
-  motivation_type?: string;
-  preferred_genre?: string;
-  target_country?: string;
-  target_city?: string;
-}
 
 interface SetupOptions {
   onboarding?: Onboarding;
@@ -69,11 +63,11 @@ export class RimoriE2ETestEnvironment {
   }
 
   async setup({ onboarding, exercises, studyPlan }: SetupOptions = {}): Promise<void> {
-    const onboardingData = {
-      motivation_type: onboarding?.motivation_type ?? 'accomplishment',
-      preferred_genre: onboarding?.preferred_genre ?? 'comedy',
+    const onboardingData: Required<Onboarding> = {
+      learning_reason: onboarding?.learning_reason ?? 'work',
       target_country: onboarding?.target_country ?? 'SE',
       target_city: onboarding?.target_city ?? 'Malmö',
+      interests: onboarding?.interests ?? 'Travel, cooking, and music',
     };
 
     // Step 1: Create both test users (temp + persist) via API

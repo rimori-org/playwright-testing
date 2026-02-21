@@ -1,11 +1,11 @@
 import { Page, Route, Request, ConsoleMessage } from '@playwright/test';
-import { RimoriInfo } from '@rimori/client/dist/plugin/CommunicationHandler';
-import { UserInfo } from '@rimori/client/dist/controller/SettingsController';
-import { MainPanelAction, Plugin } from '@rimori/client/dist/fromRimori/PluginTypes';
+import { RimoriInfo } from '@rimori/client';
+import { UserInfo } from '@rimori/client';
+import { MainPanelAction, Plugin } from '@rimori/client';
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
-import { EventPayload } from '@rimori/client/dist/fromRimori/EventBus';
+import { EventPayload } from '@rimori/client';
 import { LanguageLevel } from '@rimori/client';
 
 interface RimoriTestEnvironmentOptions {
