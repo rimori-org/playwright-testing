@@ -1,5 +1,24 @@
 import { expect, Page } from "@playwright/test";
-import { Onboarding } from "../../core/RimoriE2ETestEnvironment";
+
+export interface Onboarding {
+  learning_reason?: keyof typeof learningReasonMap;
+  target_country?: string;
+  target_city?: string;
+  interests?: string;
+}
+
+const learningReasonMap = {
+  work: 'For my job',
+  relationship: 'For my relationship',
+  friends_family: 'For friends and family',
+  education: 'For education',
+  moving: 'Moving or living abroad',
+  culture_travel: 'For culture and travel',
+  self_improvement: 'Self-improvement',
+  citizenship: 'For citizenship or residency',
+  other: 'Other reason',
+  speaking: 'What is your main motivation to learn Swedish?',
+};
 
 export async function completeOnboarding(
   page: Page,
@@ -19,43 +38,41 @@ export async function completeOnboarding(
   // Ensure we're on onboarding page
   await expect(page).toHaveURL(/\/onboarding/);
 
-  // Step 1: Purpose/Long-term goal
-  const goalInput = page.locator('textarea, input[type="text"]');
-  await goalInput.waitFor({ state: 'visible' });
-  await goalInput.click();
-  await goalInput.fill("test goal");
-  const continueButton = page.getByRole('button', { name: /continue/i });
-  await expect(continueButton).toBeEnabled({ timeout: 10000 });
-  await continueButton.click();
+  // Step 1: Learning Reason (radio select, auto-advances after selection)
+  const learningReasonOption = page.getByText(learningReasonMap[onboarding.learning_reason]);
+  await expect(learningReasonOption).toBeVisible({ timeout: 10000 });
+  await learningReasonOption.click();
 
-  // Step 2: Motivation type (auto-advances after selection)
-  // Wait for the motivation step heading to appear
-  const motivationHeading = page.getByText('What motivates you most?');
-  await expect(motivationHeading).toBeVisible({ timeout: 10000 });
-  const motivationOption = page.locator('label').filter({ hasText: '🏆Progress & Accomplishment' });
-  await expect(motivationOption).toBeVisible({ timeout: 10000 });
-  await motivationOption.click();
+  // Step 2: Interests (textarea with continue button)
+  await page.waitForTimeout(1000);
+  const interestsTextarea = page.locator('textarea');
+  await expect(interestsTextarea).toBeVisible({ timeout: 10000 });
+  await interestsTextarea.click();
+  await interestsTextarea.fill(onboarding.interests);
+  const interestsContinue = page.getByRole('button', { name: /continue/i });
+  await expect(interestsContinue).toBeEnabled({ timeout: 10000 });
+  await interestsContinue.click();
 
-  // Step 3: Genre preference (auto-advances after selection)
-  // Wait for the genre step heading to appear
-  const genreHeading = page.getByText('What kind of stories do you like most?');
-  await expect(genreHeading).toBeVisible({ timeout: 10000 });
-  const genreOption = page.locator('label').filter({ hasText: 'Comedy' });
-  await expect(genreOption).toBeVisible({ timeout: 10000 });
-  await genreOption.click();
-
-  // Step 4: Location
-  // Wait for the location step to appear
+  // Step 3: Location
   const countrySelect = page.getByLabel('Country');
   await expect(countrySelect).toBeVisible({ timeout: 10000 });
-  await countrySelect.selectOption('SE');
-  await page.getByLabel('City (optional)').selectOption('Malmö');
+  await countrySelect.selectOption(onboarding.target_country);
+  await page.getByLabel('City (optional)').selectOption(onboarding.target_city);
   await page.getByRole('button', { name: 'Continue' }).click();
+
+  // Step 4: Study Buddy (card select, auto-advances after selection)
+  // Wait for study buddy step and click the first buddy card
+  await page.waitForTimeout(1000);
+  const buddyCard = page
+    .locator('button')
+    .filter({ has: page.locator('img') })
+    .first();
+  await expect(buddyCard).toBeVisible({ timeout: 10000 });
+  await buddyCard.click();
 
   // Step 5: Wait for setup completion
   await expect(page.getByRole('heading', { name: 'Almost there!' })).toBeVisible({ timeout: 10000 });
   await page.waitForURL('**/dashboard', { timeout: 120000 });
-  // await page.screenshot({ path: path.join(process.cwd(), 'playwright/dashboard.png') });
   await expect(page.getByRole('heading', { name: "Today's Mission" })).toBeVisible({ timeout: 30000 });
 
   await expect(page.getByRole('button', { name: 'Grammar', exact: true })).toBeVisible({ timeout: 60000 });
@@ -63,7 +80,7 @@ export async function completeOnboarding(
     timeout: 60000,
   });
   await expect(page.getByText('Train your first flashcard deck', { exact: true })).toBeVisible({ timeout: 200000 });
-  await expect(page.locator('iframe').contentFrame().getByRole('button', { name: 'Back to Plugins' })).toBeVisible({
+  await expect(page.locator('iframe').contentFrame().getByText('Getting Started', { exact: true })).toBeVisible({
     timeout: 250000,
   });
 }
