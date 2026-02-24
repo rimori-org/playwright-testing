@@ -84,8 +84,6 @@ test.describe('Demo Plugin', () => {
   test('translates via side panel action event', async ({ page }) => {
     // Set up the listener BEFORE navigating so it's ready when the plugin calls onSidePanelAction
     await env.event.triggerOnSidePanelAction({
-      plugin_id: pluginId,
-      action_key: 'translate',
       action: 'translate',
       text: 'tree',
     });
@@ -105,8 +103,6 @@ test.describe('Demo Plugin', () => {
   test('translates and resets the translator', async ({ page }) => {
     // Set up the listener BEFORE navigating so it's ready when the plugin calls onSidePanelAction
     await env.event.triggerOnSidePanelAction({
-      plugin_id: pluginId,
-      action_key: 'translate',
       action: 'translate',
       text: 'tree',
     });
@@ -135,8 +131,6 @@ test.describe('Demo Plugin', () => {
 
     // Set up the listener BEFORE navigating so it's ready when the plugin calls onSidePanelAction
     await env.event.triggerOnSidePanelAction({
-      plugin_id: pluginId,
-      action_key: 'translate',
       action: 'translate',
       text: 'tree',
     });

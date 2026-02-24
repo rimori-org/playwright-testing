@@ -1,7 +1,7 @@
 import { Page, Route, Request, ConsoleMessage } from '@playwright/test';
 import { RimoriInfo } from '@rimori/client';
 import { UserInfo } from '@rimori/client';
-import { MainPanelAction, Plugin } from '@rimori/client';
+import { MainPanelAction, Plugin, SidebarAction } from '@rimori/client';
 import { DEFAULT_USER_INFO } from '../fixtures/default-user-info';
 import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
@@ -730,9 +730,9 @@ export class RimoriTestEnvironment {
     /**
      * Triggers a side panel action event as the parent application would.
      * This simulates how rimori-main's SidebarPluginHandler responds to plugin's 'action.requestSidebar' events.
-     * @param payload - The action payload containing plugin_id, action_key, and action parameters
+     * @param payload - The action payload containing text, action key, and optional args
      */
-    triggerOnSidePanelAction: async (payload: MainPanelAction) => {
+    triggerOnSidePanelAction: async (payload: SidebarAction) => {
       if (!this.messageChannelSimulator) {
         throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
       }
