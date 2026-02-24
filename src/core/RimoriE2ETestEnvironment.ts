@@ -77,23 +77,29 @@ export class RimoriE2ETestEnvironment {
     console.log(`[E2E] Test user (temp): ${temp.email}`);
     console.log(`[E2E] Existing user (persist): ${persist.email}`);
 
-    this.tempUserContext = await this.browser.newContext({ baseURL: RIMORI_URL });
     this.persistentUserContext = await this.browser.newContext({ baseURL: RIMORI_URL });
-
-    await this.setupConsoleLogging(this.tempUserContext, 'temp');
+    
     await this.setupConsoleLogging(this.persistentUserContext, 'persist');
-
+    
     console.log(`[E2E] Preparing existing user context`);
-
+    const persistPage = await this.persistentUserContext.newPage();
+    
     // Step 2: Set up existing user browser context with session via magic link
-    await this.setSessionFromMagicLink(this.persistentUserContext, persist.magicLink);
-
+    await this.setSessionFromMagicLink(persistPage, persist.magicLink);
+    
     // Step 3: Run onboarding for existing user
-    await this.completeOnboarding(this.persistentUserContext, onboardingData);
-
+    await this.completeOnboarding(persistPage, onboardingData);
+    
+    persistPage.close();
+    
     console.log(`[E2E] Setting up test user context`);
+    
+    this.tempUserContext = await this.browser.newContext({ baseURL: RIMORI_URL });
+    await this.setupConsoleLogging(this.tempUserContext, 'temp');
+    const tempPage = await this.tempUserContext.newPage();
+
     // Step 4: Set up test user browser context with session via magic link
-    await this.setSessionFromMagicLink(this.tempUserContext, temp.magicLink);
+    await this.setSessionFromMagicLink(tempPage, temp.magicLink);
 
     // Delete test user when test user context is closed
     this.tempUserContext.on('close', async () => {
@@ -102,19 +108,20 @@ export class RimoriE2ETestEnvironment {
     });
 
     // Step 5: Run onboarding for test user with e2e plugin flag
-    await this.completeOnboarding(this.tempUserContext, onboardingData, this.pluginId);
+    await this.completeOnboarding(tempPage, onboardingData, this.pluginId);
 
     // Step 6: Add exercises if specified
     if (exercises && exercises?.length > 0) {
       console.log(`[E2E] Setting up exercises`);
-      await this.completeExerciseSetup(this.tempUserContext, exercises);
+      await this.completeExerciseSetup(tempPage, exercises);
     }
 
     // Step 7: Complete study plan creation if specified
     if (studyPlan?.complete) {
       console.log(`[E2E] Setting up study plan`);
-      await this.completeStudyPlanCreation(this.tempUserContext);
+      await this.completeStudyPlanCreation(tempPage);
     }
+    tempPage.close();
     console.log(`[E2E] Setup completed`);
   }
 
@@ -195,12 +202,12 @@ export class RimoriE2ETestEnvironment {
       if (logMessage.includes('Download the React DevTools')) return;
       if (logMessage.includes('languageChanged en')) return;
       if (logMessage.includes('i18next: initialized {debug: true')) return;
+      if (logMessage.includes('i18next is maintained')) return;
       console.log(`[browser:${logLevel}] [${user}]`, logMessage);
     });
   }
 
-  private async setSessionFromMagicLink(context: BrowserContext, magicLink: string): Promise<void> {
-    const page = await context.newPage();
+  private async setSessionFromMagicLink(page: Page, magicLink: string): Promise<void> {
     await page.goto(magicLink, { waitUntil: 'networkidle' });
     await page.waitForTimeout(5000);
 
@@ -209,17 +216,15 @@ export class RimoriE2ETestEnvironment {
       throw new Error(`Failed to set session from magic link: ${url}`);
     }
 
-    await page.close();
     console.log(`[E2E] Authentication completed`);
   }
 
   private async completeOnboarding(
-    context: BrowserContext,
+    page: Page,
     onboarding: Required<Onboarding>,
     e2ePluginId?: string,
   ): Promise<void> {
     console.log(`[E2E] Starting onboarding`);
-    const page = await context.newPage();
     await page.goto('/onboarding');
     await page.waitForTimeout(5000);
     const isOnboaded = page.url().includes('/dashboard');
@@ -230,23 +235,18 @@ export class RimoriE2ETestEnvironment {
     } else {
       console.log(`[E2E] User already onboarded`);
     }
-    await page.close();
   }
 
-  private async completeExerciseSetup(context: BrowserContext, exercises: Array<Exercise>): Promise<void> {
-    const page = await context.newPage();
+  private async completeExerciseSetup(page: Page, exercises: Array<Exercise>): Promise<void> {
     for (const exercise of exercises) {
       const encoded = encodeURIComponent(JSON.stringify(exercise));
       await page.goto(`${RIMORI_URL}/dashboard?flag-e2e-exercise=${encoded}`);
       // Wait for the exercise to be created and the flag to be cleared from URL
       await page.waitForURL((url) => !url.searchParams.has('flag-e2e-exercise'), { timeout: 15000 });
     }
-    await page.close();
   }
 
-  private async completeStudyPlanCreation(context: BrowserContext): Promise<void> {
-    const page = await context.newPage();
+  private async completeStudyPlanCreation(page: Page): Promise<void> {
     await completeStudyPlanGettingStarted(page);
-    await page.close();
   }
 }
