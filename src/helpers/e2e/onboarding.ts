@@ -75,7 +75,7 @@ export async function completeOnboarding(
   await page.waitForURL('**/dashboard', { timeout: 120000 });
   await expect(page.getByRole('heading', { name: "Today's Mission" })).toBeVisible({ timeout: 30000 });
 
-  await expect(page.getByRole('button', { name: 'Grammar', exact: true })).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole('link', { name: 'Grammar', exact: true })).toBeVisible({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Getting Started: Create your first study plan' })).toBeVisible({
     timeout: 60000,
   });
