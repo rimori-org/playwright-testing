@@ -37,6 +37,7 @@ export async function completeOnboarding(
 
   // Ensure we're on onboarding page
   await expect(page).toHaveURL(/\/onboarding/);
+  await page.waitForTimeout(2000);
 
   // Step 1: Learning Reason (radio select, auto-advances after selection)
   const learningReasonOption = page.getByText(learningReasonMap[onboarding.learning_reason]);
@@ -49,6 +50,7 @@ export async function completeOnboarding(
   await expect(interestsTextarea).toBeVisible({ timeout: 10000 });
   await interestsTextarea.click();
   await interestsTextarea.fill(onboarding.interests);
+  await page.waitForTimeout(1000);
   const interestsContinue = page.getByRole('button', { name: /continue/i });
   await expect(interestsContinue).toBeEnabled({ timeout: 10000 });
   await interestsContinue.click();
