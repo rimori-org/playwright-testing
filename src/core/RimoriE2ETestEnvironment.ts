@@ -1,7 +1,7 @@
 import { config as loadEnv } from 'dotenv';
 import { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test';
-import { completeStudyPlanGettingStarted } from '../helpers/e2e/study-plan-setup';
 import { completeOnboarding, Onboarding } from '../helpers/e2e/onboarding';
+import { createExerciseViaDialog } from '../helpers/e2e/create-exercise';
 
 loadEnv();
 
@@ -26,9 +26,6 @@ interface Exercise {
 interface SetupOptions {
   onboarding?: Onboarding;
   exercises?: Array<Exercise>;
-  studyPlan?: {
-    complete: boolean;
-  };
 }
 
 interface CreateTestUserResponse {
@@ -62,7 +59,7 @@ export class RimoriE2ETestEnvironment {
     }
   }
 
-  async setup({ onboarding, exercises, studyPlan }: SetupOptions = {}): Promise<void> {
+  async setup({ onboarding, exercises }: SetupOptions = {}): Promise<void> {
     const onboardingData: Required<Onboarding> = {
       learning_reason: onboarding?.learning_reason ?? 'work',
       target_country: onboarding?.target_country ?? 'SE',
@@ -116,11 +113,6 @@ export class RimoriE2ETestEnvironment {
       await this.completeExerciseSetup(tempPage, exercises);
     }
 
-    // Step 7: Complete study plan creation if specified
-    if (studyPlan?.complete) {
-      console.log(`[E2E] Setting up study plan`);
-      await this.completeStudyPlanCreation(tempPage);
-    }
     tempPage.close();
     console.log(`[E2E] Setup completed`);
   }
@@ -209,10 +201,14 @@ export class RimoriE2ETestEnvironment {
 
   private async setSessionFromMagicLink(page: Page, magicLink: string): Promise<void> {
     await page.goto(magicLink, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(5000);
 
-    const url = page.url();
-    if (!url.includes('/dashboard') && !url.includes('/onboarding')) {
+    try {
+      await page.waitForURL(
+        (url) => url.pathname.includes('/dashboard') || url.pathname.includes('/onboarding'),
+        { timeout: 30000 },
+      );
+    } catch {
+      const url = page.url();
       throw new Error(`Failed to set session from magic link: ${url}`);
     }
 
@@ -239,14 +235,7 @@ export class RimoriE2ETestEnvironment {
 
   private async completeExerciseSetup(page: Page, exercises: Array<Exercise>): Promise<void> {
     for (const exercise of exercises) {
-      const encoded = encodeURIComponent(JSON.stringify(exercise));
-      await page.goto(`${RIMORI_URL}/dashboard?flag-e2e-exercise=${encoded}`);
-      // Wait for the exercise to be created and the flag to be cleared from URL
-      await page.waitForURL((url) => !url.searchParams.has('flag-e2e-exercise'), { timeout: 15000 });
+      await createExerciseViaDialog(page, exercise);
     }
-  }
-
-  private async completeStudyPlanCreation(page: Page): Promise<void> {
-    await completeStudyPlanGettingStarted(page);
   }
 }
