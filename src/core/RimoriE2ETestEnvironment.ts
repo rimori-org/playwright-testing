@@ -6,8 +6,8 @@ import { createExerciseViaDialog } from '../helpers/e2e/create-exercise';
 loadEnv();
 
 const RIMORI_URL = 'https://dev-app.rimori.se';
-const BACKEND_URL = 'http://localhost:2800';
-// const BACKEND_URL = 'https://dev-api.rimori.se';
+// const BACKEND_URL = 'http://localhost:2800';
+const BACKEND_URL = 'https://dev-api.rimori.se';
 
 interface RimoriE2ETestEnvironmentOptions {
   browser: Browser;
