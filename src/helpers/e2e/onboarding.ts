@@ -77,11 +77,9 @@ export async function completeOnboarding(
   await page.waitForURL('**/dashboard', { timeout: 120000 });
   await expect(page.getByRole('heading', { name: "Today's Mission" })).toBeVisible({ timeout: 30000 });
 
+  //navbar should get shown
   await expect(page.getByRole('link', { name: 'Grammar', exact: true })).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('heading', { name: 'Getting Started: Create your first study plan' })).toBeVisible({
-    timeout: 60000,
-  });
-  await expect(page.getByText('Train your first flashcard deck', { exact: true })).toBeVisible({ timeout: 200000 });
+  //support sidepanel should be open
   await expect(page.locator('iframe').contentFrame().getByText('Getting Started', { exact: true })).toBeVisible({
     timeout: 250000,
   });

@@ -800,6 +800,8 @@ export class RimoriTestEnvironment {
       this.addBackendRoute('/ai/llm', { result: text }, { ...options, isStreaming: true });
     },
     mockGetVoice: (values: Buffer, options?: MockOptions) => {
+      // getVoice() calls ensureSessionToken() first, so mock the session endpoint too
+      this.addBackendRoute('/ai/session', { session_token_id: 'mock-session-token' }, { method: 'POST' });
       this.addBackendRoute('/voice/tts', values, options);
     },
     mockGetTextFromVoice: (text: string, options?: MockOptions) => {
