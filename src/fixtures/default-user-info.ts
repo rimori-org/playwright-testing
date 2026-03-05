@@ -39,6 +39,7 @@ export const DEFAULT_USER_INFO: UserInfo = {
   target_country: 'SE',
   target_city: 'Stockholm',
   user_role: 'user',
+  subscription_tier: 'free',
 } as const;
 
 export type DefaultUserInfo = typeof DEFAULT_USER_INFO;
