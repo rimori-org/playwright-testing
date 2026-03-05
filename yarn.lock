@@ -31,19 +31,19 @@
   dependencies:
     playwright "1.57.0"
 
-"@rimori/client@^2.5.19":
-  version "2.5.19"
-  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.19.tgz#6f7892eb406a2afa814ce4bfcbdd547caf81d7ac"
-  integrity sha512-kXUGkXect/YgLhi6Ooio0mfY+ptw9xL6voPqmY4WPhygv3zSz7bvxvtApEvLOfg0QsgEReAiwdGHaCyzZocPwg==
+"@rimori/client@^2.5.20":
+  version "2.5.20"
+  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.20.tgz#70952f43afd8b9750e03f212b8061d0de9e7ced0"
+  integrity sha512-4AzmzpdpuynANKIeg1WFHRLOXpLnkWoEvUzcbhdHb4KwO+sq4dfU/8cUfebXGDHFvUsNsGod4qejuAJT6JX0dg==
   dependencies:
-    "@supabase/postgrest-js" "^2.87.1"
-    dotenv "16.5.0"
-    i18next "^25.6.0"
+    "@supabase/postgrest-js" "^2.98.0"
+    dotenv "^16.5.0"
+    i18next "^25.8.14"
 
-"@supabase/postgrest-js@^2.87.1":
-  version "2.87.3"
-  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-2.87.3.tgz#bb92b2c04ce595c669579311e05a98311c424140"
-  integrity sha512-5Z+yXOAUX5QPgGbKOAFNzG9Qu2BWufZ86edyDqfvZVm8IzqbbLh98kw4KJMqvJlKynfthBte3RCvbQ20MRk+Mg==
+"@supabase/postgrest-js@^2.98.0":
+  version "2.98.0"
+  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-2.98.0.tgz#fc011d0adec841d0566e86ad9c51cbdeb2f42665"
+  integrity sha512-v6e9WeZuJijzUut8HyXu6gMqWFepIbaeaMIm1uKzei4yLg9bC9OtEW9O14LE/9ezqNbSAnSLO5GtOLFdm7Bpkg==
   dependencies:
     tslib "2.8.1"
 
@@ -109,12 +109,7 @@ cross-spawn@^7.0.6:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-dotenv@16.5.0:
-  version "16.5.0"
-  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.5.0.tgz#092b49f25f808f020050051d1ff258e404c78692"
-  integrity sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==
-
-dotenv@^16.4.5:
+dotenv@^16.4.5, dotenv@^16.5.0:
   version "16.6.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.6.1.tgz#773f0e69527a8315c7285d5ee73c4459d20a8020"
   integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
@@ -159,10 +154,10 @@ glob@^10.3.7:
     package-json-from-dist "^1.0.0"
     path-scurry "^1.11.1"
 
-i18next@^25.6.0:
-  version "25.7.2"
-  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.7.2.tgz#870c43b94a54f43bd80d15e5f836be5bbeca5949"
-  integrity sha512-58b4kmLpLv1buWUEwegMDUqZVR5J+rT+WTRFaBGL7lxDuJQQ0NrJFrq+eT2N94aYVR1k1Sr13QITNOL88tZCuw==
+i18next@^25.8.14:
+  version "25.8.14"
+  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.8.14.tgz#5c3fcbb31014597e01d98a86250803cef836f9a7"
+  integrity sha512-paMUYkfWJMsWPeE/Hejcw+XLhHrQPehem+4wMo+uELnvIwvCG019L9sAIljwjCmEMtFQQO3YeitJY8Kctei3iA==
   dependencies:
     "@babel/runtime" "^7.28.4"
 
