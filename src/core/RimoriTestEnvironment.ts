@@ -116,10 +116,8 @@ export class RimoriTestEnvironment {
       const request = route.request();
       const url = new URL(request.url());
 
-      const devServerUrl = `http://${url.host}/locales/en.json`;
+      const devServerUrl = `http://${url.host}${url.pathname}`;
       // console.log('Fetching locales from: ' + devServerUrl);
-
-      // throw new Error('Test: ' + devServerUrl);
 
       try {
         // Fetch from the dev server
