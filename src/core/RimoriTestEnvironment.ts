@@ -116,10 +116,8 @@ export class RimoriTestEnvironment {
       const request = route.request();
       const url = new URL(request.url());
 
-      const devServerUrl = `http://${url.host}/locales/en.json`;
+      const devServerUrl = `http://${url.host}${url.pathname}`;
       // console.log('Fetching locales from: ' + devServerUrl);
-
-      // throw new Error('Test: ' + devServerUrl);
 
       try {
         // Fetch from the dev server
@@ -170,10 +168,6 @@ export class RimoriTestEnvironment {
 
     // POST /ai/session — required by event.request() and any AI call (session.ensure())
     this.addBackendRoute('/ai/session', { session_token_id: 'test-session-token' }, { method: 'POST' });
-    // POST /ai/llm — fallback empty stream for Avatar conversations and other background AI calls
-    this.addBackendRoute('/ai/llm', '', { method: 'POST', isStreaming: true });
-    // POST /voice/tts — fallback empty response for AudioPlayer (test env has no real audio)
-    this.addBackendRoute('/voice/tts', {}, { method: 'POST' });
     // POST /knowledge/for-topic — fallback for daily-plan knowledge lookups
     this.addBackendRoute('/knowledge/for-topic', { id: 'test-knowledge-id' }, { method: 'POST' });
 

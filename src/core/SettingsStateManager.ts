@@ -77,33 +77,9 @@ export class SettingsStateManager {
   /**
    * Manually set settings (useful for test setup).
    * Accepts either a full PluginSettings row (with `id`, `plugin_id`, `settings`, etc.)
-   * or a plain inner-settings object (e.g. `{ skillAssessmentCompletedAt: '...' }`).
-   * If an inner-settings object is detected it is automatically wrapped in the proper row structure.
    */
   setSettings(settings: PluginSettings | null): void {
-    if (settings === null) {
-      this.settings = null;
-      return;
-    }
-    // Detect a full PluginSettings row vs a plain inner-settings object.
-    // A full row has at least one of these known structural keys.
-    const isFullRow =
-      'id' in settings ||
-      'plugin_id' in settings ||
-      'guild_id' in settings ||
-      'settings' in settings ||
-      'is_guild_setting' in settings ||
-      'user_id' in settings;
-
-    if (isFullRow) {
-      this.settings = settings;
-    } else {
-      // Treat as inner settings — wrap in the existing row structure
-      this.settings = {
-        ...(this.settings ?? {}),
-        settings: settings as unknown as Record<string, unknown>,
-      };
-    }
+    this.settings = settings;
   }
 
   /**
