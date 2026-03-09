@@ -29,7 +29,7 @@ export const DEFAULT_USER_INFO: UserInfo = {
     name: 'Test Buddy',
     description: 'Test study buddy',
     avatarUrl: '',
-    voiceId: 'alloy',
+    voiceId: 'openai_alloy',
     aiPersonality: 'friendly',
   },
   study_duration: 30,

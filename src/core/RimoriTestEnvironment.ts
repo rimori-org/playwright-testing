@@ -164,6 +164,19 @@ export class RimoriTestEnvironment {
     // Set up default handlers for shared_content routes
     this.setupSharedContentRoutes();
 
+    // Default handlers for common backend routes so background calls (Avatar, AudioPlayer, etc.)
+    // don't cause "no route handler found" errors in tests that don't explicitly mock them.
+    // These are registered AFTER any test-level mocks so they act as low-priority fallbacks.
+
+    // POST /ai/session — required by event.request() and any AI call (session.ensure())
+    this.addBackendRoute('/ai/session', { session_token_id: 'test-session-token' }, { method: 'POST' });
+    // POST /ai/llm — fallback empty stream for Avatar conversations and other background AI calls
+    this.addBackendRoute('/ai/llm', '', { method: 'POST', isStreaming: true });
+    // POST /voice/tts — fallback empty response for AudioPlayer (test env has no real audio)
+    this.addBackendRoute('/voice/tts', {}, { method: 'POST' });
+    // POST /knowledge/for-topic — fallback for daily-plan knowledge lookups
+    this.addBackendRoute('/knowledge/for-topic', { id: 'test-knowledge-id' }, { method: 'POST' });
+
     // Initialize MessageChannelSimulator to simulate parent-iframe communication
     // This makes the plugin think it's running in an iframe (not standalone mode)
     // Convert RimoriInfo from CommunicationHandler format to MessageChannelSimulator format
@@ -796,6 +809,8 @@ export class RimoriTestEnvironment {
      * @param options - Optional mock options.
      */
     mockGetSteamedText: (text: string, options?: MockOptions) => {
+      // getSteamedText() may be preceded by event.request() which calls session.ensure(), so mock the session endpoint too
+      this.addBackendRoute('/ai/session', { session_token_id: 'mock-session-token' }, { method: 'POST' });
       // Wrap text in result object as the new client expects { result: string }
       this.addBackendRoute('/ai/llm', { result: text }, { ...options, isStreaming: true });
     },
@@ -815,6 +830,8 @@ export class RimoriTestEnvironment {
      * @param options - Optional mock options.
      */
     mockGetObject: (value: Record<string, unknown>, options?: MockOptions) => {
+      // getObject() may be preceded by event.request() which calls session.ensure(), so mock the session endpoint too
+      this.addBackendRoute('/ai/session', { session_token_id: 'mock-session-token' }, { method: 'POST' });
       this.addBackendRoute('/ai/llm', value, { ...options, isStreaming: true });
     },
     /**
@@ -825,6 +842,8 @@ export class RimoriTestEnvironment {
      * @param options - Optional mock options.
      */
     mockGetStreamedObject: (value: Record<string, unknown>, options?: MockOptions) => {
+      // getStreamedObject() may be preceded by event.request() which calls session.ensure(), so mock the session endpoint too
+      this.addBackendRoute('/ai/session', { session_token_id: 'mock-session-token' }, { method: 'POST' });
       this.addBackendRoute('/ai/llm', value, { ...options, isStreaming: true });
     },
   };
