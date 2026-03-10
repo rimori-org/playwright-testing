@@ -50,8 +50,26 @@ export async function createExerciseViaDialog(page: Page, exercise: Exercise): P
     await descInput.fill(exercise.description);
   }
 
-  // Keep default dates (today → today+7 days) — they are valid by default
-  await dialog.getByRole('button', { name: 'Next' }).click();
+  // Explicitly set dates using local timezone to avoid UTC date drift in the deployed rimori-main
+  // (rimori-main initialises dates with toISOString() which returns UTC, causing "Next" to be
+  //  disabled when the local clock is past UTC midnight but the UTC date is still "yesterday").
+  const localDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = localDateStr(new Date());
+  const weekLaterStr = localDateStr(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+
+  const startDateInput = dialog.locator('input#start-date');
+  if (await startDateInput.count() > 0) {
+    await startDateInput.fill(todayStr);
+  }
+  const endDateInput = dialog.locator('input#end-date');
+  if (await endDateInput.count() > 0) {
+    await endDateInput.fill(weekLaterStr);
+  }
+
+  const nextBtn = dialog.getByRole('button', { name: 'Next' });
+  await expect(nextBtn).toBeEnabled({ timeout: 5000 });
+  await nextBtn.click();
 
   // Step 3: Fill in action parameters
   if (exercise.parameters) {

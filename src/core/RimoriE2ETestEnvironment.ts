@@ -195,6 +195,7 @@ export class RimoriE2ETestEnvironment {
       if (logMessage.includes('languageChanged en')) return;
       if (logMessage.includes('i18next: initialized {debug: true')) return;
       if (logMessage.includes('i18next is maintained')) return;
+      if (logMessage.includes('i18next is made possible')) return;
       console.log(`[browser:${logLevel}] [${user}]`, logMessage);
     });
   }
