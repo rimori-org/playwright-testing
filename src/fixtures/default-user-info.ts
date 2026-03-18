@@ -32,7 +32,6 @@ export const DEFAULT_USER_INFO: UserInfo = {
     voiceId: 'openai_alloy',
     aiPersonality: 'friendly',
   },
-  study_duration: 30,
   onboarding_completed: true,
   context_menu_on_select: true,
   user_name: 'Test User',
