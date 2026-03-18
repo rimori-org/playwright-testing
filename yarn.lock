@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@babel/runtime@^7.28.4":
-  version "7.28.4"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.28.4.tgz#a70226016fabe25c5783b2f22d3e1c9bc5ca3326"
-  integrity sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==
+"@babel/runtime@^7.28.6":
+  version "7.28.6"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.28.6.tgz#d267a43cb1836dc4d182cce93ae75ba954ef6d2b"
+  integrity sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==
 
 "@isaacs/cliui@^8.0.2":
   version "8.0.2"
@@ -31,14 +31,14 @@
   dependencies:
     playwright "1.57.0"
 
-"@rimori/client@^2.5.21":
-  version "2.5.21"
-  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.21.tgz#a859480cd991e92db856da48b7a3031031280fb8"
-  integrity sha512-fRyupBgzP98caa213lx9TitC4lGnWPyLW83xQSzm6tRYyLkr4L5SgR+Kj53BQVSOc2FC2GBN/A1uh47cycie0w==
+"@rimori/client@^2.5.23":
+  version "2.5.23"
+  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.23.tgz#4c0a10e49ba6bd9feea781912aec3abf640901b3"
+  integrity sha512-YMi6OW7iucbSN5Zl99Dp9Nav7z7ibQ1ppHHm7w9+ChptmvxNYh3gz2K+RS/7Vzy6zz36qQ+lLtP+gIPYlSDI6A==
   dependencies:
     "@supabase/postgrest-js" "^2.98.0"
     dotenv "^16.5.0"
-    i18next "^25.8.14"
+    i18next "^25.8.15"
 
 "@supabase/postgrest-js@^2.98.0":
   version "2.98.0"
@@ -154,12 +154,12 @@ glob@^10.3.7:
     package-json-from-dist "^1.0.0"
     path-scurry "^1.11.1"
 
-i18next@^25.8.14:
-  version "25.8.14"
-  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.8.14.tgz#5c3fcbb31014597e01d98a86250803cef836f9a7"
-  integrity sha512-paMUYkfWJMsWPeE/Hejcw+XLhHrQPehem+4wMo+uELnvIwvCG019L9sAIljwjCmEMtFQQO3YeitJY8Kctei3iA==
+i18next@^25.8.15:
+  version "25.8.18"
+  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.8.18.tgz#51863b65bc42e3525271f2680ebbf7d150ff53cc"
+  integrity sha512-lzY5X83BiL5AP77+9DydbrqkQHFN9hUzWGjqjLpPcp5ZOzuu1aSoKaU3xbBLSjWx9dAzW431y+d+aogxOZaKRA==
   dependencies:
-    "@babel/runtime" "^7.28.4"
+    "@babel/runtime" "^7.28.6"
 
 is-fullwidth-code-point@^3.0.0:
   version "3.0.0"
