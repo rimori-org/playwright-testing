@@ -78,7 +78,7 @@ export async function createExerciseViaDialog(page: Page, exercise: Exercise): P
       const combobox = dialog.locator(`[id="param-${key}"][role="combobox"]`);
       if (await combobox.count() > 0) {
         await combobox.click();
-        await page.getByRole('option', { name: String(value), exact: true }).click();
+        await page.getByRole('option', { name: new RegExp(`^${String(value)}$`, 'i') }).click();
         continue;
       }
 
