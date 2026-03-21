@@ -1014,13 +1014,13 @@ export class RimoriTestEnvironment {
       this.addBackendRoute('/ai/embedding', value, { ...options, method: 'POST' });
     },
     /**
-     * Mock RPC call for vector similarity search.
-     * Used by SharedContentController.searchByTopic() for RAG-based content search.
+     * Mock backend endpoint for topic-based shared content search.
+     * Used by SharedContentController.searchByTopic() which calls POST /shared-content/get-by-topic.
      * @param value - Array of search results
      * @param options - Optional mock options
      */
     mockSearchByTopic: (value: unknown, options?: MockOptions) => {
-      this.addSupabaseRoute('rpc/search_shared_content', value, { ...options, method: 'POST' });
+      this.addBackendRoute('/shared-content/get-by-topic', value, { ...options, method: 'POST' });
     },
     /**
      * Mock fetching bookmarked shared content.
