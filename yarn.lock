@@ -31,10 +31,10 @@
   dependencies:
     playwright "1.57.0"
 
-"@rimori/client@^2.5.23":
-  version "2.5.23"
-  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.23.tgz#4c0a10e49ba6bd9feea781912aec3abf640901b3"
-  integrity sha512-YMi6OW7iucbSN5Zl99Dp9Nav7z7ibQ1ppHHm7w9+ChptmvxNYh3gz2K+RS/7Vzy6zz36qQ+lLtP+gIPYlSDI6A==
+"@rimori/client@^2.5.26":
+  version "2.5.26"
+  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.26.tgz#d756ecdc2fa41d3ac529aef61206f204732042bd"
+  integrity sha512-aPrqoQMuMeTZN0dezGQlZaMvTimXEv2Nt2pPiuDNVOd4qpCISdgnwLCacnc2t4fVWtjCgGEXhdCiL7+DhgM1xA==
   dependencies:
     "@supabase/postgrest-js" "^2.98.0"
     dotenv "^16.5.0"
