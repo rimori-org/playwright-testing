@@ -266,14 +266,14 @@ Mocks a non-streaming text generation response.
 env.ai.mockGetText({ result: 'Generated text' });
 ```
 
-#### `mockGetSteamedText(text: string, options?: MockOptions)`
+#### `mockGetStreamedText(text: string, options?: MockOptions)`
 
 Mocks a streaming text response formatted as SSE (Server-Sent Events).
 
 **Note**: Due to Playwright's `route.fulfill()` limitations, all SSE chunks are sent at once (no visible delays). The client will still parse it correctly as SSE.
 
 ```typescript
-env.ai.mockGetSteamedText('This is the streaming response text.');
+env.ai.mockGetStreamedText('This is the streaming response text.');
 ```
 
 #### `mockGetObject(value: unknown, options?: MockOptions)`
@@ -506,9 +506,9 @@ test.describe('Translator Plugin', () => {
         gramatically_corrected_input_text: 'tree',
         detected_language: 'English',
         text_type: 'noun',
-        translation_swedish: 'träd',
+        translation_target_language: 'träd',
         translation_mother_tongue: 'tree',
-        en_ett_word: 'ett',
+        noun_gender: 'neuter',
       },
       {
         matcher: (req) => {
@@ -572,7 +572,7 @@ test('handles side panel action', async ({ page }) => {
 ```typescript
 test('handles streaming chat responses', async ({ page }) => {
   // Mock streaming response for chat
-  env.ai.mockGetSteamedText('This is the AI response that will be streamed.');
+  env.ai.mockGetStreamedText('This is the AI response that will be streamed.');
 
   await env.setup();
   await page.goto(`${pluginUrl}/#/sidebar/translate`);
@@ -603,7 +603,7 @@ You can override any of these defaults by calling the appropriate mock methods.
 
 ### Streaming Responses
 
-Due to Playwright's `route.fulfill()` requiring a complete response body, streaming responses (via `mockGetSteamedText`) send all SSE chunks at once. The client will parse them correctly as SSE, but incremental timing/delays won't be visible in the UI.
+Due to Playwright's `route.fulfill()` requiring a complete response body, streaming responses (via `mockGetStreamedText`) send all SSE chunks at once. The client will parse them correctly as SSE, but incremental timing/delays won't be visible in the UI.
 
 For true streaming with visible delays, use a real HTTP server instead of route mocking.
 
