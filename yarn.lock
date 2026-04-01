@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@babel/runtime@^7.28.6":
-  version "7.28.6"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.28.6.tgz#d267a43cb1836dc4d182cce93ae75ba954ef6d2b"
-  integrity sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==
+"@babel/runtime@^7.29.2":
+  version "7.29.2"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.29.2.tgz#9a6e2d05f4b6692e1801cd4fb176ad823930ed5e"
+  integrity sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==
 
 "@isaacs/cliui@^8.0.2":
   version "8.0.2"
@@ -31,19 +31,19 @@
   dependencies:
     playwright "1.57.0"
 
-"@rimori/client@^2.5.28":
-  version "2.5.28"
-  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.28.tgz#3808c1b2764aeb3e9874c4dcfd6ce60af5669683"
-  integrity sha512-bIEFDH95tpdfPV6RbINnvaWGI5IAy8u+Z1wUMHtaFZSTMuqbxg9xvAnP3jWsjhYKKQyY8Luu1P+dbyQTWgrGDg==
+"@rimori/client@^2.5.29":
+  version "2.5.29"
+  resolved "https://registry.yarnpkg.com/@rimori/client/-/client-2.5.29.tgz#e53f83f5edfc1e92df100297262615164663feff"
+  integrity sha512-FdfNOK1oqXt7cKzGA2nOZTeSTFWrdKaboOQFvucUU4MWvfG+/XSRr01HNbyZCPpV8N3p2/w5CxHJnKlKZQJ4bQ==
   dependencies:
-    "@supabase/postgrest-js" "^2.98.0"
+    "@supabase/postgrest-js" "^2.100.1"
     dotenv "^16.5.0"
-    i18next "^25.8.15"
+    i18next "^25.10.10"
 
-"@supabase/postgrest-js@^2.98.0":
-  version "2.98.0"
-  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-2.98.0.tgz#fc011d0adec841d0566e86ad9c51cbdeb2f42665"
-  integrity sha512-v6e9WeZuJijzUut8HyXu6gMqWFepIbaeaMIm1uKzei4yLg9bC9OtEW9O14LE/9ezqNbSAnSLO5GtOLFdm7Bpkg==
+"@supabase/postgrest-js@^2.100.1":
+  version "2.101.1"
+  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-2.101.1.tgz#a32d199716e220226deba7693323d82839ce438f"
+  integrity sha512-UW1RajH5jbZoK+ldAJ1I6VZ+HWwZ2oaKjEQ6Gn+AQ67CHQVxGl8wNQoLYyumbyaExm41I+wn7arulcY1eHeZJw==
   dependencies:
     tslib "2.8.1"
 
@@ -154,12 +154,12 @@ glob@^10.3.7:
     package-json-from-dist "^1.0.0"
     path-scurry "^1.11.1"
 
-i18next@^25.8.15:
-  version "25.8.18"
-  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.8.18.tgz#51863b65bc42e3525271f2680ebbf7d150ff53cc"
-  integrity sha512-lzY5X83BiL5AP77+9DydbrqkQHFN9hUzWGjqjLpPcp5ZOzuu1aSoKaU3xbBLSjWx9dAzW431y+d+aogxOZaKRA==
+i18next@^25.10.10:
+  version "25.10.10"
+  resolved "https://registry.yarnpkg.com/i18next/-/i18next-25.10.10.tgz#d610511c87150e7a98c58fa780e93f90603fe187"
+  integrity sha512-cqUW2Z3EkRx7NqSyywjkgCLK7KLCL6IFVFcONG7nVYIJ3ekZ1/N5jUsihHV6Bq37NfhgtczxJcxduELtjTwkuQ==
   dependencies:
-    "@babel/runtime" "^7.28.6"
+    "@babel/runtime" "^7.29.2"
 
 is-fullwidth-code-point@^3.0.0:
   version "3.0.0"
