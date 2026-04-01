@@ -508,13 +508,13 @@ export class RimoriTestEnvironment {
       responseValue = await matchingMock.value(request);
     }
 
-    // Handle streaming responses (for mockGetSteamedText and mockGetStreamedObject)
+    // Handle streaming responses (for mockGetStreamedText and mockGetStreamedObject)
     // Since Playwright requires complete body, we format as SSE without delays
     if (matchingMock.isStreaming) {
       let body: string;
 
       if (typeof responseValue === 'string') {
-        // Text streaming (mockGetSteamedText)
+        // Text streaming (mockGetStreamedText)
         body = this.formatAsSSE(responseValue);
       } else {
         // Object streaming (mockGetStreamedObject)
@@ -793,7 +793,7 @@ export class RimoriTestEnvironment {
     },
     /**
      * Mocks a streaming text response from the LLM endpoint.
-     * The new rimori-client's getSteamedText uses streamObject internally with { result: string } schema,
+     * The new rimori-client's getStreamedText uses streamObject internally with { result: string } schema,
      * so the text is wrapped in a result object.
      *
      * **Note**: Due to Playwright's route.fulfill() requiring a complete response body,
@@ -802,8 +802,8 @@ export class RimoriTestEnvironment {
      * @param text - The text to stream. Will be wrapped as { result: text } and formatted as SSE.
      * @param options - Optional mock options.
      */
-    mockGetSteamedText: (text: string, options?: MockOptions) => {
-      // getSteamedText() may be preceded by event.request() which calls session.ensure(), so mock the session endpoint too
+    mockGetStreamedText: (text: string, options?: MockOptions) => {
+      // getStreamedText() may be preceded by event.request() which calls session.ensure(), so mock the session endpoint too
       this.addBackendRoute('/ai/session', { session_token_id: 'mock-session-token' }, { method: 'POST' });
       // Wrap text in result object as the new client expects { result: string }
       this.addBackendRoute('/ai/llm', { result: text }, { ...options, isStreaming: true });

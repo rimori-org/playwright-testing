@@ -17,10 +17,10 @@ test.describe('Demo Plugin', () => {
         text_type: 'noun',
         word_unexisting_likelihood: 0,
         translation_mother_tongue: 'tree',
-        translation_swedish: 'träd',
+        translation_target_language: 'träd',
         translation_noun_singular: 'tree',
         plural: 'träd',
-        en_ett_word: 'ett',
+        noun_gender: 'neuter',
         alternative_meaning_mother_tongue: '',
       },
       {
@@ -127,7 +127,7 @@ test.describe('Demo Plugin', () => {
 
   test('translates and ask question about the translation', async ({ page }) => {
     // Mock streaming text response for the chat/question feature
-    await env.ai.mockGetSteamedText('This is a tree in Swedish: träd. It is an ett word.');
+    await env.ai.mockGetStreamedText('This is a tree in Swedish: träd. It is an ett word.');
 
     // Set up the listener BEFORE navigating so it's ready when the plugin calls onSidePanelAction
     await env.event.triggerOnSidePanelAction({
