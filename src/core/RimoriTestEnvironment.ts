@@ -242,12 +242,11 @@ export class RimoriTestEnvironment {
       pluginId: options.pluginId,
       guild: {
         id: 'guild-test-id',
-        // @ts-ignore
         name: 'Test Guild',
         city: 'Test City',
         country: 'Testland',
         description: 'A dummy guild used for testing purposes.',
-        // @ts-ignore
+        // @ts-expect-error - createdAt field not in type but required for test data
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-02T00:00:00.000Z',
         inviteCode: 'INVITE123',
