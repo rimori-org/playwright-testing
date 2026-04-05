@@ -242,7 +242,6 @@ export class RimoriTestEnvironment {
       pluginId: options.pluginId,
       guild: {
         id: 'guild-test-id',
-        // @ts-expect-error - name field not in type but required for test data
         name: 'Test Guild',
         city: 'Test City',
         country: 'Testland',
