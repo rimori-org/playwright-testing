@@ -753,10 +753,13 @@ export class RimoriTestEnvironment {
     },
     /**
      * Triggers a main panel action event as the parent application would.
-     * This simulates how rimori-main's MainPluginHandler uses EventBus.respond to respond
-     * to plugin's 'action.requestMain' events. When the plugin calls onMainPanelAction(),
-     * it emits '{pluginId}.action.requestMain' and listens for the response.
-     * This method sets up a responder that automatically responds when the plugin emits this event.
+     * This simulates how rimori-main sends the MainPanelAction back to the plugin after
+     * the plugin calls onMainPanelAction() and emits '{pluginId}.action.requestMain'.
+     *
+     * We listen for that outbound emit and respond by injecting a fresh event with
+     * sender='rimori-main'. This avoids the EventBus per-listener blacklist that would
+     * block a {type:'response'} message carrying the same eventId as the original emit.
+     *
      * @param payload - The main panel action payload containing plugin_id, action_key, and action parameters
      */
     triggerOnMainPanelAction: async (payload: MainPanelAction) => {
@@ -764,17 +767,15 @@ export class RimoriTestEnvironment {
         throw new Error('MessageChannelSimulator not initialized. Call setup() first.');
       }
 
-      // Listen for when the plugin emits 'action.requestMain' (which becomes '{pluginId}.action.requestMain')
-      // and respond with the MainPanelAction payload, matching rimori-main's EventBus.respond behavior
       const topic = `${this.pluginId}.action.requestMain`;
-
-      // Store the payload in a closure so we can respond with it
       const actionPayload = payload;
 
-      // Register a persistent auto-responder (not respondOnce) because the plugin may
-      // emit this event multiple times during its lifecycle. Using respondOnce would
-      // only respond to the first request and ignore subsequent ones.
-      this.messageChannelSimulator.respond(topic, actionPayload);
+      // When the plugin emits action.requestMain, immediately emit back the action data
+      // as a fresh event from 'rimori-main' (different sender bypasses the EventBus blacklist).
+      const off = this.messageChannelSimulator.on(topic, async () => {
+        await this.messageChannelSimulator!.emit(topic, actionPayload, 'rimori-main');
+        off();
+      });
     },
   };
 
