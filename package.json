@@ -44,7 +44,8 @@
     "react-dom": "^19.1.0",
     "rimraf": "^5.0.7",
     "typescript": "^5.7.2",
-    "vite": "^5.4.18"
+    "vite": "^5.4.18",
+    "zod": "^3.23.8"
   },
   "files": [
     "dist",
