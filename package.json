@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@module-federation/enhanced": "^2.3.3",
+    "@module-federation/vite": "^1.14.5",
     "@playwright/test": "^1.40.0",
     "@rimori/client": "^2.5.30",
     "@rimori/react-client": "^0.4.19",
