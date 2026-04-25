@@ -11,7 +11,8 @@
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run build:harness",
+    "build:harness": "vite build --config harness.vite.config.ts",
     "dev": "tsc -w --preserveWatchOutput -p tsconfig.json",
     "clean": "rimraf dist",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
@@ -29,11 +30,20 @@
     "@rimori/client": "^2.5.30"
   },
   "devDependencies": {
+    "@module-federation/enhanced": "^2.3.3",
     "@playwright/test": "^1.40.0",
     "@rimori/client": "^2.5.30",
+    "@rimori/react-client": "^0.4.19",
+    "@tanstack/react-query": "^5.56.2",
     "@types/node": "^20.12.7",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "rimraf": "^5.0.7",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "^5.4.18"
   },
   "files": [
     "dist",

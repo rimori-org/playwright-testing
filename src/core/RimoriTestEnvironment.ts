@@ -7,6 +7,15 @@ import { MessageChannelSimulator } from './MessageChannelSimulator';
 import { SettingsStateManager, PluginSettings } from './SettingsStateManager';
 import { EventPayload } from '@rimori/client';
 import { LanguageLevel } from '@rimori/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Harness served by interceptRoutes so scenario tests can exercise the real
+// federation boundary (./MainPanel expose + singleton dedup) instead of the
+// standalone App.tsx. Built from src/harness/ via harness.vite.config.ts.
+const HARNESS_DIR = path.resolve(__dirname, '..', '..', 'dist', 'harness');
+const HARNESS_HTML_URL = '/__rimori_harness__.html';
+const HARNESS_ASSETS_PREFIX = '/__rimori_harness__/';
 
 interface RimoriTestEnvironmentOptions {
   page: Page;
@@ -87,6 +96,7 @@ interface MockRecord {
 export class RimoriTestEnvironment {
   private readonly page: Page;
   private readonly pluginId: string;
+  private readonly pluginUrl: string;
 
   private rimoriInfo: RimoriInfo;
   private backendRoutes: Record<string, MockRecord[]> = {};
@@ -97,6 +107,7 @@ export class RimoriTestEnvironment {
   public constructor(options: RimoriTestEnvironmentOptions) {
     this.page = options.page;
     this.pluginId = options.pluginId;
+    this.pluginUrl = options.pluginUrl;
 
     this.rimoriInfo = this.getRimoriInfo(options);
 
@@ -110,7 +121,90 @@ export class RimoriTestEnvironment {
     this.interceptRoutes(options.pluginUrl);
   }
 
+  /**
+   * Fetches the plugin's standalone `dist/index.html` over HTTP (served by the plugin
+   * dev server's middleware at `/__rimori_dist_index__.html`) and extracts its
+   * `<link rel="stylesheet">` tags. The hrefs already point at `/assets/*` which the
+   * same dev server serves from `dist/`, so the harness page picks up the plugin's
+   * Tailwind base + theme without any filesystem path resolution.
+   *
+   * Returns empty string if the plugin hasn't been built (`yarn build:scenario`)
+   * or the dev server doesn't expose `/__rimori_dist_index__.html`.
+   */
+  private async collectPluginStylesheets(pluginUrl: string): Promise<string> {
+    const indexUrl = `${pluginUrl}/__rimori_dist_index__.html`;
+    try {
+      const response = await fetch(indexUrl);
+      if (!response.ok) {
+        console.warn(
+          `[rimori-harness] Plugin index.html not served at ${indexUrl} (status ${response.status}). ` +
+            `Ensure the plugin's vite.config.ts middleware serves it from dist/, and that ` +
+            `\`yarn build:scenario\` has been run.`,
+        );
+        return '';
+      }
+      const html = await response.text();
+      const linkRegex = /<link[^>]*rel=["']stylesheet["'][^>]*>/gi;
+      const links = html.match(linkRegex) ?? [];
+      const rewritten = links
+        .map((tag) => tag.replace(/href=["']\.?\/?(assets\/[^"']+)["']/i, 'href="/$1"'))
+        .join('\n    ');
+      // console.log(`[rimori-harness] Injecting ${links.length} plugin stylesheet(s) from ${indexUrl}`);
+      return rewritten;
+    } catch (err) {
+      console.warn(`[rimori-harness] Failed to fetch ${indexUrl}:`, (err as Error).message);
+      return '';
+    }
+  }
+
   private interceptRoutes(pluginUrl: string): void {
+    // HTML entry — inject the runtime config and serve the built index.html.
+    // Script references already use absolute paths (base: '/__rimori_harness__/')
+    // so the browser fetches them via the assets wildcard handler below.
+    this.page.route(`${pluginUrl}${HARNESS_HTML_URL}`, async (route: Route) => {
+      try {
+        const htmlPath = path.join(HARNESS_DIR, 'index.html');
+        if (!fs.existsSync(htmlPath)) {
+          throw new Error(
+            `Harness bundle missing at ${HARNESS_DIR}. Run \`yarn --cwd plugins/playwright-testing build:harness\` first.`,
+          );
+        }
+        const configScript = `<script>window.__RIMORI_HARNESS__ = ${JSON.stringify({
+          pluginId: this.pluginId,
+          remoteUrl: `${pluginUrl}/remoteEntry.js`,
+        })};</script>`;
+        // Lift `<link rel="stylesheet">` tags from the plugin's standalone dist/index.html
+        // so the harness page picks up the same Tailwind base + theme variables that
+        // production rimori-main provides. The plugin's vite dev-server middleware already
+        // serves /assets/* from dist/, so the (rewritten-to-absolute) hrefs resolve same-origin.
+        const pluginStylesheets = await this.collectPluginStylesheets(pluginUrl);
+        const html = fs.readFileSync(htmlPath, 'utf-8')
+          .replace('<!-- RIMORI_HARNESS_CONFIG_INJECTION -->', configScript)
+          .replace('</head>', `${pluginStylesheets}\n</head>`);
+        await route.fulfill({ status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: html });
+      } catch (error) {
+        await route.fulfill({ status: 500, headers: { 'Content-Type': 'text/plain' }, body: String((error as Error)?.message ?? error) });
+      }
+    });
+
+    // Assets wildcard — serve any JS/CSS chunk that the federation host build emitted.
+    // Vite emits files like bootstrap.js, vendor chunks, CSS, etc. all into dist/harness/.
+    this.page.route(`${pluginUrl}${HARNESS_ASSETS_PREFIX}**`, async (route: Route) => {
+      try {
+        const url = new URL(route.request().url());
+        const fileName = url.pathname.slice(HARNESS_ASSETS_PREFIX.length);
+        const filePath = path.join(HARNESS_DIR, fileName);
+        if (!fs.existsSync(filePath)) { await route.continue(); return; }
+        const ext = path.extname(fileName);
+        const contentType = ext === '.js' ? 'application/javascript; charset=utf-8'
+          : ext === '.css' ? 'text/css; charset=utf-8'
+          : 'application/octet-stream';
+        await route.fulfill({ status: 200, headers: { 'Content-Type': contentType }, body: fs.readFileSync(filePath) });
+      } catch (error) {
+        await route.fulfill({ status: 500, headers: { 'Content-Type': 'text/plain' }, body: String((error as Error)?.message ?? error) });
+      }
+    });
+
     // Intercept all /locales requests and fetch from the dev server
     this.page.route(`${pluginUrl}/locales/**`, async (route: Route) => {
       const request = route.request();
@@ -1158,5 +1252,30 @@ export class RimoriTestEnvironment {
 
   public readonly navigation = {
     mockToDashboard: () => {},
+
+    /**
+     * Navigates to a path inside the federated plugin via the scenario harness.
+     * The harness URL (`<pluginUrl>/__rimori_harness__.html`) is the base; whatever
+     * is passed in `route` is appended verbatim. Tests are responsible for the
+     * leading `#/` (HashRouter) or `/` (future BrowserRouter) so the same helper
+     * works regardless of which router the plugin uses.
+     *
+     * @param route - Suffix appended to the harness URL (e.g. `#/`, `#/deck/1`).
+     */
+    to: async (route: string = ''): Promise<void> => {
+      await this.page.goto(`${this.pluginUrl}/__rimori_harness__.html${route}`);
+    },
+
+    /**
+     * Returns the part of the current URL that follows the harness base
+     * (`<pluginUrl>/__rimori_harness__.html`). For HashRouter this includes the
+     * leading `#/...`; for BrowserRouter it would be the path/query.
+     * Returns an empty string if the page isn't currently on the harness URL.
+     */
+    get: (): string => {
+      const url = this.page.url();
+      const base = `${this.pluginUrl}/__rimori_harness__.html`;
+      return url.startsWith(base) ? url.slice(base.length) : '';
+    },
   };
 }

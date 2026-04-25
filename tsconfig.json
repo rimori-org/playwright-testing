@@ -18,5 +18,5 @@
   "include": [
     "src",
   ],
-  "exclude": ["node_modules", "dist", "build", ".turbo", "test-results", "playwright-report"]
+  "exclude": ["node_modules", "dist", "build", ".turbo", "test-results", "playwright-report", "src/harness"]
 }
