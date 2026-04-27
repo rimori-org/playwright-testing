@@ -31,6 +31,7 @@ export default defineConfig({
     outDir: path.resolve(__dirname, 'dist/harness'),
     emptyOutDir: true,
     target: 'esnext',
+    minify: true,
     rollupOptions: {
       input: path.resolve(__dirname, 'src/harness/index.html'),
       output: {

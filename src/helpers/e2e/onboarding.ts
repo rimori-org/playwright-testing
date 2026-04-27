@@ -80,7 +80,7 @@ export async function completeOnboarding(
   //navbar should get shown
   await expect(page.getByRole('link', { name: 'Grammar', exact: true })).toBeVisible({ timeout: 60000 });
   //support sidepanel should be open
-  await expect(page.locator('iframe').contentFrame().getByText('Getting Started', { exact: true })).toBeVisible({
+  await expect(page.locator('#sidebar').getByText('Getting Started', { exact: true })).toBeVisible({
     timeout: 250000,
   });
 }
