@@ -14,6 +14,7 @@ export default defineConfig({
     react(),
     federation({
       name: 'rimori-scenario-host',
+      dts: false,
       remotes: {},
       shared: {
         react: { singleton: true },
