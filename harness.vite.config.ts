@@ -7,6 +7,7 @@ import path from 'path';
 // The federation plugin wires up the shared scope automatically, so bootstrap.tsx
 // can call registerRemotes/loadRemote exactly like rimori-main's FederatedPluginRenderer.
 // Assets are served at /__rimori_harness__/* by RimoriTestEnvironment.interceptRoutes.
+
 export default defineConfig({
   root: path.resolve(__dirname, 'src/harness'),
   base: '/__rimori_harness__/',
