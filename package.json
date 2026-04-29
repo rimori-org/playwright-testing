@@ -1,6 +1,6 @@
 {
   "name": "@rimori/playwright-testing",
-  "version": "0.3.23",
+  "version": "0.3.24",
   "description": "Playwright testing utilities for Rimori plugins and workers",
   "license": "Apache-2.0",
   "repository": {
@@ -27,13 +27,13 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.40.0",
-    "@rimori/client": "^2.5.35"
+    "@rimori/client": "^2.5.36"
   },
   "devDependencies": {
-    "@module-federation/enhanced": "^2.3.3",
-    "@module-federation/vite": "^1.14.5",
+    "@module-federation/enhanced": "2.3.3",
+    "@module-federation/vite": "1.15.0",
     "@playwright/test": "^1.40.0",
-    "@rimori/client": "^2.5.35",
+    "@rimori/client": "^2.5.36",
     "@rimori/react-client": "^0.4.19",
     "@tanstack/react-query": "^5.56.2",
     "@types/node": "^20.12.7",
