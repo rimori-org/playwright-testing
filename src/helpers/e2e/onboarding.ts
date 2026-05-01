@@ -30,13 +30,22 @@ export async function completeOnboarding(
   console.log(`[E2E] Onboarding: ${JSON.stringify(onboarding)}`);
   const url = e2ePluginId ? `/onboarding?flag-e2e-plugin-id=${e2ePluginId}` : `/onboarding`;
 
-  await page.goto(url, { waitUntil: 'networkidle' });
-
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
 
-  // Ensure we're on onboarding page
-  await expect(page).toHaveURL(/\/onboarding/);
+  await page.goto(url, { waitUntil: 'networkidle' });
+
+  // Wait for the app to settle — new users stay on /onboarding, existing users redirect to /dashboard
+  await page.waitForURL(
+    (u) => u.pathname.includes('/onboarding') || u.pathname.includes('/dashboard'),
+    { timeout: 15000 },
+  );
+
+  if (page.url().includes('/dashboard')) {
+    console.log('[E2E] User already onboarded, skipping onboarding steps');
+    return;
+  }
+
   await page.waitForTimeout(2000);
 
   // Step 1: Learning Reason (radio select, auto-advances after selection)
