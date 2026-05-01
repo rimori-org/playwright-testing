@@ -222,16 +222,8 @@ export class RimoriE2ETestEnvironment {
     e2ePluginId?: string,
   ): Promise<void> {
     console.log(`[E2E] Starting onboarding`);
-    await page.goto('/onboarding');
-    await page.waitForTimeout(5000);
-    const isOnboaded = page.url().includes('/dashboard');
-    if (!isOnboaded) {
-      console.log(`[E2E] Onboarding user`);
-      await completeOnboarding(page, onboarding, e2ePluginId);
-      console.log(`[E2E] Onboarding completed`);
-    } else {
-      console.log(`[E2E] User already onboarded`);
-    }
+    await completeOnboarding(page, onboarding, e2ePluginId);
+    console.log(`[E2E] Onboarding completed`);
   }
 
   private async completeExerciseSetup(page: Page, exercises: Array<Exercise>): Promise<void> {
