@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import { federation } from '@module-federation/vite';
 import path from 'path';
 
@@ -34,7 +34,7 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'esnext',
     minify: true,
-    rollupOptions: {
+    rolldownOptions: {
       input: path.resolve(__dirname, 'src/harness/index.html'),
       output: {
         entryFileNames: '[name].js',
