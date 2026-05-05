@@ -12,7 +12,7 @@
   "source": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run build:harness",
-    "build:harness": "vite build --config harness.vite.config.ts",
+    "build:harness": "vite build --config harness.vite.config.mts",
     "dev": "tsc -w --preserveWatchOutput -p tsconfig.json",
     "clean": "rimraf dist",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
