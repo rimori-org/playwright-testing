@@ -11,7 +11,7 @@
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json && npm run build:harness",
+    "build": "tsc -p tsconfig.json && pnpm build:harness",
     "build:harness": "vite build --config harness.vite.config.mts",
     "dev": "tsc -w --preserveWatchOutput -p tsconfig.json",
     "clean": "rimraf dist",

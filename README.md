@@ -18,7 +18,7 @@ npm install --save-dev @rimori/playwright-testing @playwright/test
 # or
 pnpm add -D @rimori/playwright-testing @playwright/test
 # or
-yarn add -D @rimori/playwright-testing @playwright/test
+pnpm add -D @rimori/playwright-testing @playwright/test
 ```
 
 ## Setup Steps
@@ -43,7 +43,7 @@ Then run:
 ```bash
 npm install
 # or
-yarn install
+pnpm install
 # or
 pnpm install
 ```
@@ -146,14 +146,14 @@ const config: RimoriPluginConfig = {
    ```bash
    npm run dev
    # or
-   yarn dev
+   pnpm dev
    ```
 
 2. **Run tests** in another terminal:
    ```bash
    npm test
    # or
-   yarn test
+   pnpm test
    ```
 
 ### Complete Example Setup
