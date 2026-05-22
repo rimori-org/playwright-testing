@@ -22,11 +22,11 @@ importers:
         specifier: ^1.40.0
         version: 1.60.0
       '@rimori/client':
-        specifier: ^2.5.37
-        version: 2.5.37(typescript@5.9.3)
+        specifier: ^2.5.39
+        version: 2.5.39(typescript@5.9.3)
       '@rimori/react-client':
         specifier: ^0.4.19
-        version: 0.4.22(@rimori/client@2.5.37(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 0.4.22(@rimori/client@2.5.39(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.100.10(react@19.2.6)
@@ -312,8 +312,8 @@ packages:
   '@remirror/core-constants@3.0.0':
     resolution: {integrity: sha512-42aWfPrimMfDKDi4YegyS7x+/0tlzaqwPQCULLanv3DMIlu96KTJR0fM5isWX2UViOqlGnX6YFgqWepcX+XMNg==}
 
-  '@rimori/client@2.5.37':
-    resolution: {integrity: sha512-04B4zJiOIjfEK9LMi4opeJ0wJoFfuE8hYIIQCKtuEU5tGJ2wzLMzGw1qxXsANSZkV6x/ngMUwcpcA11/HSTpdg==}
+  '@rimori/client@2.5.39':
+    resolution: {integrity: sha512-1KTE+eJMgV9OO380WmmJSBBiN0LkeBFFtN+HYk/VahwMuXRO611BU0vTdbaFbOWpTDg8mpkRE7D2x+Tg7cMVbg==}
     hasBin: true
 
   '@rimori/react-client@0.4.22':
@@ -1752,7 +1752,7 @@ snapshots:
 
   '@remirror/core-constants@3.0.0': {}
 
-  '@rimori/client@2.5.37(typescript@5.9.3)':
+  '@rimori/client@2.5.39(typescript@5.9.3)':
     dependencies:
       '@supabase/postgrest-js': 2.105.4
       dotenv: 16.6.1
@@ -1760,9 +1760,9 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@rimori/react-client@0.4.22(@rimori/client@2.5.37(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@rimori/react-client@0.4.22(@rimori/client@2.5.39(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@rimori/client': 2.5.37(typescript@5.9.3)
+      '@rimori/client': 2.5.39(typescript@5.9.3)
       '@tiptap/core': 2.27.2(@tiptap/pm@2.27.2)
       '@tiptap/extension-image': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))
       '@tiptap/extension-link': 2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2)
