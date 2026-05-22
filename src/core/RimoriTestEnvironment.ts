@@ -128,7 +128,7 @@ export class RimoriTestEnvironment {
    * same dev server serves from `dist/`, so the harness page picks up the plugin's
    * Tailwind base + theme without any filesystem path resolution.
    *
-   * Returns empty string if the plugin hasn't been built (`yarn build:scenario`)
+   * Returns empty string if the plugin hasn't been built (`pnpm build:scenario`)
    * or the dev server doesn't expose `/__rimori_dist_index__.html`.
    */
   private async collectPluginStylesheets(pluginUrl: string): Promise<string> {
@@ -139,7 +139,7 @@ export class RimoriTestEnvironment {
         console.warn(
           `[rimori-harness] Plugin index.html not served at ${indexUrl} (status ${response.status}). ` +
             `Ensure the plugin's vite.config.ts middleware serves it from dist/, and that ` +
-            `\`yarn build:scenario\` has been run.`,
+            `\`pnpm build:scenario\` has been run.`,
         );
         return '';
       }
@@ -166,7 +166,7 @@ export class RimoriTestEnvironment {
         const htmlPath = path.join(HARNESS_DIR, 'index.html');
         if (!fs.existsSync(htmlPath)) {
           throw new Error(
-            `Harness bundle missing at ${HARNESS_DIR}. Run \`yarn --cwd plugins/playwright-testing build:harness\` first.`,
+            `Harness bundle missing at ${HARNESS_DIR}. Run \`pnpm --filter @rimori/playwright-testing build:harness\` first.`,
           );
         }
         const configScript = `<script>window.__RIMORI_HARNESS__ = ${JSON.stringify({

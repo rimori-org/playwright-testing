@@ -87,7 +87,6 @@ export class MessageChannelSimulator {
       async () => {
         await this.setupMessageChannel();
       },
-      { handle: false },
     );
 
     await this.page.exposeBinding(
@@ -95,7 +94,6 @@ export class MessageChannelSimulator {
       async (_source, payload: PluginMessage) => {
         await this.handlePortMessage(payload);
       },
-      { handle: false },
     );
 
     await this.page.addInitScript(
