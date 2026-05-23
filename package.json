@@ -33,8 +33,8 @@
     "@module-federation/enhanced": "2.3.3",
     "@module-federation/vite": "1.15.0",
     "@playwright/test": "^1.40.0",
-    "@rimori/client": "^2.5.39",
-    "@rimori/react-client": "^0.4.19",
+    "@rimori/client": "^2.5.38",
+    "@rimori/react-client": "^0.4.22",
     "@tanstack/react-query": "^5.56.2",
     "@types/node": "^20.12.7",
     "@types/react": "^19.0.0",
@@ -53,5 +53,11 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "core-js",
+      "protobufjs"
+    ]
   }
 }
